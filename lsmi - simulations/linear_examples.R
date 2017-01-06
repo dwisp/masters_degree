@@ -13,7 +13,7 @@ ind.ex1.x <- rnorm(50, 0, 4)
 ind.ex1.y <- rnorm(50, 5, 1)
 
 ind.ex1.cor <- cor(ind.ex1.x, ind.ex1.y) %>% round(3)
-ind.ex1.lsmi <- LSMI(as.list(ind.ex1.x), as.list(ind.ex1.y)) %>% round(3)
+ind.ex1.lsmi <- lsmi.vanilla(as.list(ind.ex1.x), as.list(ind.ex1.y)) %>% round(3)
 
 ggplot(data.frame(x = ind.ex1.x, y = ind.ex1.y), aes(x, y)) + 
   geom_point(color = 'orange', size = 2) + 
@@ -22,7 +22,7 @@ ggplot(data.frame(x = ind.ex1.x, y = ind.ex1.y), aes(x, y)) +
   theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
   ggsave('indep_example_normal.png')
 
-replicate(50, LSMI(as.list(ind.ex1.x), as.list(ind.ex1.y))) %>% table
+replicate(50, lsmi.vanilla(as.list(ind.ex1.x), as.list(ind.ex1.y))) %>% table
 
 #######################################
 ### how lsmi depends on correlation ###
@@ -77,7 +77,7 @@ for(i in 1:lin.step) {
   
   lin.lsmi.values[subs.vals,'lsmi'] <- replicate(lin.rep.lsmi,
                                         
-                                        LSMI(as.list(cor.vs.lsmi.linear$x[subs.data]),
+                                        lsmi.vanilla(as.list(cor.vs.lsmi.linear$x[subs.data]),
                                              as.list(cor.vs.lsmi.linear$y[subs.data])))
   
   current.cortest <- cor.test(cor.vs.lsmi.linear$x[subs.data],
@@ -176,7 +176,7 @@ slin.intercept <- 1
 slin.data2plot <- data.frame(x = runif(slin.dots, -1, 1), y = rep(0, slin.dots))
 slin.data2plot$y <- slin.slope*slin.data2plot$x + slin.intercept + rnorm(slin.dots, 0, 2)
 slin.cor2plot <- cor(slin.data2plot$x, slin.data2plot$y) %>% round(3)
-slin.lsmi2plot <- LSMI(as.list(slin.data2plot$x), as.list(slin.data2plot$y)) %>% round(3)
+slin.lsmi2plot <- lsmi.vanilla(as.list(slin.data2plot$x), as.list(slin.data2plot$y)) %>% round(3)
 
 
 ggplot(slin.data2plot, aes(x, y)) + 
@@ -213,7 +213,7 @@ for(i in 1:slin.step) {
   subs.data <- indices.data[1]:indices.data[2]
   
   slin.lsmi.values[subs.vals, 'lsmi'] <- replicate(slin.rep.lsmi,
-                                                   LSMI(as.list(slin.lsmi[subs.data, 'x']), 
+                                                   lsmi.vanilla(as.list(slin.lsmi[subs.data, 'x']), 
                                                         as.list(slin.lsmi[subs.data, 'y']))
   )
   

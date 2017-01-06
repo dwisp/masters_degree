@@ -28,7 +28,7 @@ for(i in 1:compt.step.lsmi) {
   
   compt.lsmi.values[subs.vals, 'cmpt.time'] <- replicate(compt.rep.lsmi,
                                                          system.time(
-                                                           LSMI(as.list(
+                                                           lsmi.vanilla(as.list(
                                                              sample(compt.data$x, subs.data)
                                                            ),
                                                            as.list(
@@ -44,6 +44,7 @@ for(i in 1:compt.step.lsmi) {
 rm(subs.data)
 rm(indices.vals)
 
+library(ggplot2)
 ggplot(data = compt.lsmi.values, aes(sampl.size, cmpt.time)) + 
   geom_point(color = 'red', size = 3, alpha = 0.3) +
   geom_smooth(method = 'lm',formula = y ~ poly(x, 2), colour = 'darkorange') + 

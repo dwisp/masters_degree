@@ -7,8 +7,9 @@
 # 2. fixed 'mean' bug found in native Matlab implementation
 # 3. slightly modified parameter space:
 # excluded largest parameters lambda and sigma which are probably never actually used to reduce computational time
+# 4. number of basis functions is 100 if sample size is greater than 100
 
-LSMI <- function(x, y, sigmas, lambdas, nbfuns, c = 1.5) {
+lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, c = 1.5) {
   # x and y are LISTS for the sake of multi-dimensionality
   
   # dealing with the arguments #
