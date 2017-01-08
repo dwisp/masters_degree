@@ -8,9 +8,11 @@
 # 3. slightly modified parameter space:
 # excluded largest parameters lambda and sigma which are probably never actually used to reduce computational time
 # 4. number of basis functions is 100 if sample size is greater than 100
+# 5. basis functions aren't permuted if max(nbfuns) > current sample size
 
-lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, c = 1.5) {
+lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 1.5) {
   # x and y are LISTS for the sake of multi-dimensionality
+  require(magrittr)
   
   # dealing with the arguments #
   if(missing(sigmas)) sigmas <- 10^seq(-2, 1, length.out = 8)#10^seq(-2, 2, length.out = 9)
@@ -21,15 +23,40 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, c = 1.5) {
   if(length(x) != length(y)) stop('Lengths of x and y are different!')
   n <- length(x)
   
-  require(magrittr)
-  ## basis functions - maybe will get expanded later ##
+  ## basis functions ##
   ### we only take nbfuns out of total of n
   centroids <- 1:n
+  ## if n is less than nbfuns, then no permutation is done on later stages
   if(nbfuns < n) centroids %<>% sample(.) %>% extract(1:nbfuns)
+  
+  #### discrete case handling
+  if(y.discrete) {
+    # checking if all elements of y are of same length; a little clunky
+    if(y %>% sapply(length) %>% unique %>% length %>% equals(1) %>% not) {
+      warning('Lengths of class vectors y should be the same for all x!')
+    }
+    if(y %>% sapply(class) %>% unique %>% length %>% equals(1) %>% not ) {
+      warning('All y should be of the same class!')
+    }
+    ## transforming multi-dimensional class vectors to integers
+    ## to later obtain phiY in a similar fashion as if length(y) was 1
+    if(length(y[[1]]) != 1) y %<>% lapply(., paste, collapse = '')
+    ## if y is numeric, then checking for equality is performed faster
+    ## so we transform y to numeric in any case
+    ## we've just  checked if all elements of y are of same class so y[[1]] is enough
+
+    if(!class(y[[1]]) %in% c('numeric', 'integer')) {
+      y %<>% sapply(as.factor)
+      levels(y) <- 1:length(levels(y))
+      y %<>% as.numeric
+    }
+    phiy.discr <- sapply(as.list(y), function(arg) lapply(as.list(y), '==', arg)) %>% extract(centroids, ) %>% as.matrix
+    mode(phiy.discr) <- 'numeric'
+  }
   
   ## squared distances are only computed once!
   dist2x <- dist(x) %>% as.matrix %>% extract(centroids, ) %>% .^2
-  dist2y <- dist(y) %>% as.matrix %>% extract(centroids, ) %>% .^2
+  if(!y.discrete) dist2y <- dist(y) %>% as.matrix %>% extract(centroids, ) %>% .^2
     
   if(length(sigmas) == 1 & length(lambdas) == 1) {
     cvScores <- -Inf
@@ -37,7 +64,12 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, c = 1.5) {
     sigma.chosen <- sigmas
     lambda.chosen <- lambdas
     phix.fin <- dist2x %>% divide_by(-2*sigma.chosen^2) %>% exp
-    phiy.fin <- dist2y %>% divide_by(-2*sigma.chosen^2) %>% exp
+    if(!y.discrete) {
+      phiy.fin <- dist2y %>% divide_by(-2*sigma.chosen^2) %>% exp
+    } else {
+      phiy.fin <- phiy.discr %>% extract(centroids, ) %>% as.matrix
+      mode(phiy.fin) <- 'numeric'
+    }
     
   } else { # CV
     fold <- 5
@@ -58,8 +90,14 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, c = 1.5) {
     phisx <- array(dist2x, dim = c(nbfuns, n, length(sigmas)))
     phisx %<>% sweep(3, -2*sigmas^2, '/') %>% exp
     
-    phisy <- array(dist2y, dim = c(nbfuns, n, length(sigmas)))
-    phisy %<>% sweep(3, -2*sigmas^2, '/') %>% exp
+    if(!y.discrete) {
+      phisy <- array(dist2y, dim = c(nbfuns, n, length(sigmas)))
+      phisy %<>% sweep(3, -2*sigmas^2, '/') %>% exp 
+    } else {
+      ### this is an array so I don't have to rewrite array slicing below which corresponds to
+      ### trying out various sigmas in continious y case; hope that doesn't take so much time and memory
+      phisy <- array(phiy.discr, dim = c(dim(phiy.discr), length(sigmas)))
+    } 
     ##
     H.cv.in <- array(0, dim = c(nbfuns, nbfuns, fold))
     h.cv.in <- array(0, dim = c(nbfuns, 1, fold))
