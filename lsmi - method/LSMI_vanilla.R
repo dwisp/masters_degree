@@ -27,7 +27,7 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
   ### we only take nbfuns out of total of n
   centroids <- 1:n
   ## if n is less than nbfuns, then no permutation is done on later stages
-  if(nbfuns < n) centroids %<>% sample(.) %>% extract(1:nbfuns)
+  if(nbfuns < n) centroids %<>% sample %>% extract(1:nbfuns)
   
   #### discrete case handling
   if(y.discrete) {
@@ -55,8 +55,13 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
   }
   
   ## squared distances are only computed once!
+  if(length(x[[1]]) != 1) x %<>% Reduce(rbind, .) ## test!
   dist2x <- dist(x) %>% as.matrix %>% extract(centroids, ) %>% .^2
-  if(!y.discrete) dist2y <- dist(y) %>% as.matrix %>% extract(centroids, ) %>% .^2
+  
+  if(!y.discrete) {
+    if(length(y[[1]] != 1)) y %<>% Reduce(rbind, .) ## test!
+    dist2y <- dist(y) %>% as.matrix %>% extract(centroids, ) %>% .^2
+  }
     
   if(length(sigmas) == 1 & length(lambdas) == 1) {
     cvScores <- -Inf
@@ -113,12 +118,12 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
       for(k in 1:fold) {
         kSlice <- cvSubset == k
         ### in-subset matrices
-        h.cv.in[,,k] <- rowMeans(phisx[, kSlice, sigma.ind]*phisy[, kSlice, sigma.ind]) #%>% as.matrix
+        h.cv.in[,,k] <- rowMeans(phisx[, kSlice, sigma.ind]*phisy[, kSlice, sigma.ind])
         H.cv.in[,,k] <- (phisx[, kSlice, sigma.ind] %*% t(phisx[, kSlice, sigma.ind])) *
                         (phisy[, kSlice, sigma.ind] %*% t(phisy[, kSlice, sigma.ind])) %>%
                         divide_by(n_[k]^2)
         ### out-of-subset matrices
-        h.cv.out[,,k] <- rowMeans(phisx[, !kSlice, sigma.ind]*phisy[, !kSlice, sigma.ind]) #%>% as.matrix
+        h.cv.out[,,k] <- rowMeans(phisx[, !kSlice, sigma.ind]*phisy[, !kSlice, sigma.ind])
         H.cv.out[,,k] <- (phisx[, !kSlice, sigma.ind] %*% t(phisx[, !kSlice, sigma.ind])) *
                          (phisy[, !kSlice, sigma.ind] %*% t(phisy[, !kSlice, sigma.ind])) %>%
                          divide_by((n-n_[k])^2)
@@ -134,7 +139,7 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
         }
       }
     }
-    # choosing the optimal parameters #
+    # choosing optimal parameters #
     chosen.pars.ind <- which(cvScores == min(cvScores), arr.ind = TRUE)
     sigma.chosen <- sigmas[chosen.pars.ind[1]]
     lambda.chosen <- lambdas[chosen.pars.ind[2]]
@@ -142,11 +147,6 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
     phix.fin <- phisx[,,chosen.pars.ind[1]]
     phiy.fin <- phisy[,,chosen.pars.ind[1]]
   }
-  #print('cvScores')
-  #print(cvScores)
-  
-  #print(sigma.chosen)
-  #print(lambda.chosen)
   
   phi.fin <- phix.fin*phiy.fin
   h.fin <- rowMeans(phi.fin)
