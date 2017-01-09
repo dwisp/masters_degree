@@ -31,12 +31,19 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
   
   #### discrete case handling
   if(y.discrete) {
-    # checking if all elements of y are of same length; a little clunky
-    if(y %>% sapply(length) %>% unique %>% length %>% equals(1) %>% not) {
-      warning('Lengths of class vectors y should be the same for all x!')
-    }
-    if(y %>% sapply(class) %>% unique %>% length %>% equals(1) %>% not ) {
-      warning('All y should be of the same class!')
+    ## vector labels are supported as well
+    ## we already know that length(x) == length(y)
+    if(class(y) != 'list') {
+      y %<>% as.list
+    } else {
+      ## checking if all elements of y are of same length knowing it's a list
+      if(y %>% sapply(length) %>% unique %>% length %>% equals(1) %>% not) {
+        stop('Lengths of class vectors y should be the same for all x!')
+      }
+      ## checking if all elements of y are of same class knowing it's a list
+      if(y %>% sapply(class) %>% unique %>% length %>% equals(1) %>% not ) {
+        stop('All y should be of the same class!')
+      }
     }
     ## transforming multi-dimensional class vectors to integers
     ## to later obtain phiY in a similar fashion as if length(y) was 1
@@ -50,7 +57,9 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
       levels(y) <- 1:length(levels(y))
       y %<>% as.numeric
     }
-    phiy.discr <- sapply(as.list(y), function(arg) lapply(as.list(y), '==', arg)) %>% extract(centroids, ) %>% as.matrix
+    phiy.discr <- sapply(as.list(y), function(arg) lapply(as.list(y), '==', arg)) %>% 
+      extract(centroids, ) %>%
+      as.matrix
     mode(phiy.discr) <- 'numeric'
   }
   
@@ -72,8 +81,7 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
     if(!y.discrete) {
       phiy.fin <- dist2y %>% divide_by(-2*sigma.chosen^2) %>% exp
     } else {
-      phiy.fin <- phiy.discr %>% extract(centroids, ) %>% as.matrix
-      mode(phiy.fin) <- 'numeric'
+      phiy.fin <- phiy.discr
     }
     
   } else { # CV
