@@ -1,6 +1,6 @@
 #######################################################
 ## tests performed on classification subtype of LSMI ##
-## experimnts on famous iris dataset                 ##
+## experiments on the famous iris dataset            ##
 #######################################################
 
 library(magrittr)
@@ -8,8 +8,8 @@ library(magrittr)
 # what's the typical dispersion value for lsmi in discrete case?
 # will it be able to differentiate original case from  one with permuted labels?
 
-tst.disy.x1 <- as.list(c(rnorm(25, 2, 2), rnorm(25, -2, 2)))
-tst.disy.y1 <- as.list(c(rep('a', 25), rep('b', 25)))
+tst.disy.x1 <- as.list(c(rnorm(50, 2, 2), rnorm(50, -2, 2)))
+tst.disy.y1 <- as.list(c(rep('a', 50), rep('b', 50)))
 tst.disy.y1_wrong <- tst.disy.y1 %>% unlist %>% sample %>% as.list
 
 tst.disy.lsmi1 <- replicate(50, lsmi.vanilla(tst.disy.x1, tst.disy.y1, y.discrete = T))
@@ -24,9 +24,9 @@ df.disy.lsmi_comparison %<>% melt %>% rename(case = variable)
 library(ggplot2)
 ggplot(df.disy.lsmi_comparison, aes(case, value)) +
   geom_boxplot(aes(color = case)) +
-  ggtitle('Boxplot of discrete-case LSMI values for two normal distributions N(-2, 2) / N(2, 2)
+  labs(y = 'lsmi estimate') + 
+  ggtitle('Boxplot of discrete-case LSMI values for normal distributions N(-2, 2) / N(2, 2)
         right boxplot shows the result of calculating LSMI using permuted labels') +
-  theme(plot.title = element_text(hjust = 0.5)) + 
   ggsave('discrete_lsmi_normal_distrs.png')
 
 ## testing discrete lsmi on iris dataset to validate clustering results
@@ -58,20 +58,26 @@ hc.iris.labels_wrong <- hc.iris.labels %>% sample
 
 ## slicing the data by rows to produce list of 4-dimensional vectors
 iris4lsmi <- split(as.matrix(iris[, -5]), row(iris[,-5]))
+iris.2classes <- iris[5] %>% unlist %>% as.character %>% inset(. == 'versicolor', 'virginica')
+iris.2classes_wrong <- iris[5] %>% unlist %>% as.character %>% inset(. == 'setosa', 'virginica')
 
 iris.lsmi <- replicate(25, lsmi.vanilla(iris4lsmi, hc.iris.labels, y.discrete = TRUE))
 iris.lsmi_true <- replicate(25, lsmi.vanilla(iris4lsmi, iris[5] %>% unlist, y.discrete = TRUE))
+iris.lsmi_twoclasses <- replicate(25, lsmi.vanilla(iris4lsmi, iris.2classes, y.discrete = TRUE))
+iris.lsmi_twoclasses_wrong <- replicate(25, lsmi.vanilla(iris4lsmi, iris.2classes_wrong, y.discrete = TRUE))
 iris.lsmi_wrong <- replicate(25, lsmi.vanilla(iris4lsmi, hc.iris.labels_wrong, y.discrete = TRUE))
+
 
 iris.lsmi.results <- data.frame(hclust_labels = iris.lsmi,
                                 true_labels = iris.lsmi_true,
+                                merged_hybrids = iris.lsmi_twoclasses,
+                                merged_wrong_classes = iris.lsmi_twoclasses_wrong,
                                 permuted_labels = iris.lsmi_wrong) %>% melt %>% rename(case = variable)
 
 qplot(factor(case), value, data = iris.lsmi.results, 
-      geom = c('boxplot'), color = case, xlab = 'case', 
+      geom = c('boxplot'), color = case, xlab = 'case', ylab = 'lsmi estimate',
       main = 'Boxplot of 25 discrete-case LSMI values for iris data using labels obtained from 
       a) hierarchical clustering b) original data and c) permuted clustering labels') +
-  theme(plot.title = element_text(hjust = 0.5)) + 
   ggsave('iris_lsmi_hclust_validation.png')
 
 #################################################################
@@ -99,7 +105,10 @@ qplot(k, lsmi, data = lsmi.vs.clustnum, geom = 'boxplot', color = k,
 # testing how features correlate / lsmi-ate #
 
 library(GGally)
+
+png('corrplot_iris.png', width = 900, height = 900, pointsize = 3)
 ggpairs(iris[, 1:4])
+dev.off()
 
 # comparing how lsmi can detect dependencies between the features analogous to correlation
 ## lower triangular matrix of between-features lsmi 
@@ -136,10 +145,13 @@ nbfun.lsmi.values <- data.frame(lsmi = rep(0, nbfun.prec.reps*(150 %/% nbfun.pre
 indices.vals <- 1:nbfun.prec.reps
 for(i in seq(10, 150, by = nbfun.prec.step)) {
   nbfun.lsmi.values[indices.vals, 'lsmi'] <- replicate(nbfun.prec.reps, 
-                                                       lsmi.vanilla(iris4lsmi, iris[5] %>% unlist, 
-                                                                    y.discrete = TRUE, nbfuns = i))
+                                                       lsmi.vanilla(iris4lsmi, iris$Species %>% unlist,
+                                                                    nbfuns = i)
+                                                       #test.x, test.x2, 
+                                                       )
   indices.vals %<>% add(nbfun.prec.reps)
 }
+rm(indices.vals)
 
 ## mean squared error auxilary function
 mse <- function(obs, eta) {
@@ -176,4 +188,50 @@ ggplot(nbfun.mse.values, aes(base.funs, var)) +
   ggtitle('LSMI standard deviation depending on number of base functions considered
           Fisher iris data; y are labels denoting iris species') +
   ggsave('nbfuns_sd.png')
+
+## universal MSE function for plotting
+plotMSE <- function(x, y, nrep = 25, nstep = 10, ydisc = FALSE, plotTitle) {
+  library(magrittr)
+  if(!is.list(x)) x %<>% as.list
+  if(!is.list(y)) y %<>% as.list
+  if(missing(plotTitle)) plotTitle <- 'Mean squared error w.r.t. median LSMI calculated using all base functions'
+  
+  maxnbfuns <- length(x)
+  nbfun.seq <- seq(10, maxnbfuns, by = nstep)
+  
+  df.vals <- data.frame(nbfuns = nbfun.seq %>% rep(each = nrep), 
+                        lsmi = numeric(length(nbfun.seq)*nrep))
+  
+  df.mse <- data.frame(nbfuns = nbfun.seq, 
+                       mse = numeric(length(nbfun.seq)))
+  
+  indices.vals <- 1:nrep
+  for(i in seq(10, maxnbfuns, by = nstep)) {
+    df.vals$lsmi[indices.vals] <- replicate(nrep, lsmi.vanilla(x, y, nbfuns = i, y.discrete = ydisc))
+    indices.vals %<>% add(nrep)
+  }
+  
+  df.mse$mse <- lapply(split(df.vals$lsmi, rep(seq(10, maxnbfuns, by = nstep), each = nrep)), 
+                       mse, 
+                       eta = median(df.vals$lsmi %>% tail(nrep))) %>% as.numeric
+  
+  ggplot(df.mse, aes(nbfuns, mse)) +
+    geom_point(color = 'firebrick2') + 
+    labs(x = 'number of base functions considered',
+         y = 'mean squared error') +
+    ggtitle(plotTitle)
+}
+  
+plotMSE(iris[, 3], iris[, 4], nrep = 30, nstep = 10, 
+        plotTitle = 'Mean squared error w.r.t. median LSMI calculated using all 150 base functions,
+                     Iris Petal Length vs Iris Petal Width')
+  
+  
+
+  
+  
+  
+  
+
+
 

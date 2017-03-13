@@ -26,14 +26,14 @@ ggplot(data.frame(x = nl.ex1.x, y = nl.ex1.y), aes(x, y)) +
 #################################
 
 nl.ex2.x <- runif(50, -1, 1)
-nl.ex2.y <- nl.ex2.x^2 + rnorm(50, 0, 0.25)
+nl.ex2.y <- nl.ex2.x^2 + rnorm(50, 0, 0.1)
 
 nl.ex2.cor <- cor(nl.ex2.x, nl.ex2.y) %>% round(3)
 nl.ex2.lsmi <- lsmi.vanilla(as.list(nl.ex2.x), as.list(nl.ex2.y)) %>% round(3)
 
 ggplot(data.frame(x = nl.ex2.x, y = nl.ex2.y), aes(x, y)) + 
   geom_point(color = 'orange', size = 2) + 
-  ggtitle(paste('Nonlinear dependence example 2: parabola\n x ~ U[-1;1]; y = x^2 + N(0, 0.25); n = 50\n',
+  ggtitle(paste('Nonlinear dependence example 2: parabola\n x ~ U[-1;1]; y = x^2 + N(0, 0.1); n = 50\n',
                 'Cor = ', nl.ex2.cor, '; ', 'LSMI = ', nl.ex2.lsmi, sep = '')) +
   theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
   ggsave('parabola_example.png')
@@ -46,7 +46,7 @@ ggplot(data.frame(x = nl.ex2.x, y = nl.ex2.y), aes(x, y)) +
 #################################
 
 nl.ex3.x <- runif(50, -1, 1)
-nl.ex3.y <- sample(c(-1,1), 50, T, c(1/2,1/2))*sqrt(1 - nl.ex3.x^2) + rnorm(50, 0, 0.25)
+nl.ex3.y <- sample(c(-1,1), 50, T, c(1/2,1/2))*sqrt(1 - nl.ex3.x^2) + rnorm(50, 0, 0.1)
 
 nl.ex3.cor <- cor(nl.ex3.x, nl.ex3.y) %>% round(3)
 nl.ex3.lsmi <- lsmi.vanilla(as.list(nl.ex3.x), as.list(nl.ex3.y)) %>% round(3)
@@ -54,10 +54,10 @@ nl.ex3.lsmi <- lsmi.vanilla(as.list(nl.ex3.x), as.list(nl.ex3.y)) %>% round(3)
 ggplot(data.frame(x = nl.ex3.x, y = nl.ex3.y), aes(x, y)) + 
   coord_cartesian(xlim = c(-1, 1), ylim = c(-1.1, 1.1)) +
   geom_point(color = 'orange', size = 2) +
-  ggtitle(paste('Nonlinear dependence example 3: unit circle\n x ~ U[-1;1]; y = random(-1;1)*sqrt(1 - x^2) + N(0, 0.25), n = 50\n',
+  ggtitle(paste('Nonlinear dependence example 3: unit circle\n x ~ U[-1;1]; y = random(-1;1)*sqrt(1 - x^2) + N(0, 0.1), n = 50\n',
                 'Cor = ', nl.ex3.cor, '; ', 'LSMI = ', nl.ex3.lsmi, sep = '')) +
   theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
-  ggsave('circle_example.png')#, width = 9, height = 9)
+  ggsave('circle_example.png', width = 9, height = 9)
 
 # lsmi.reps.nl.ex3 <- replicate(50, lsmi.vanilla(as.list(nl.ex3.x), as.list(nl.ex3.y)), TRUE)
 # table(lsmi.reps.nl.ex3)

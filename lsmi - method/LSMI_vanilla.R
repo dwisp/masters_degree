@@ -10,14 +10,16 @@
 # 4. number of basis functions is 100 if sample size is greater than 100
 # 5. basis functions aren't permuted if max(nbfuns) > current sample size
 
-lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 1.5) {
+lsmi.vanilla <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = FALSE, # main parameters
+                         sigmas, lambdas, nbfuns, c = 1.5) { # rarely used parameters
   # x and y are LISTS for the sake of multi-dimensionality
   require(magrittr)
   
   # dealing with the arguments #
-  if(missing(sigmas)) sigmas <- 10^seq(-2, 1, length.out = 8)#10^seq(-2, 2, length.out = 9)
+  if(missing(sigmas)) sigmas <- 10^seq(-2, 1, length.out = 8) # 10^seq(-2, 2, length.out = 9)
   if(missing(lambdas)) lambdas <- 10^seq(-3, 0, length.out = 8)
   if(missing(nbfuns)) nbfuns <- min(length(x), 100)
+  MImethod <- match.arg(method, c('bits', 'nats', 'suzuki'))
   
   ## some notations for convenience
   if(length(x) != length(y)) stop('Lengths of x and y are different!')
@@ -29,8 +31,8 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
   ## if n is less than nbfuns, then no permutation is done on later stages
   if(nbfuns < n) centroids %<>% sample %>% extract(1:nbfuns)
   
-  #### discrete case handling
-  if(y.discrete) {
+  #### discrete case handling; factor intuitively says y is discrete
+  if(y.discrete | is.factor(y)) {
     ## vector labels are supported as well
     ## we already know that length(x) == length(y)
     if(class(y) != 'list') {
@@ -64,12 +66,19 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
   }
   
   ## squared distances are only computed once!
-  if(length(x[[1]]) != 1) x %<>% Reduce(rbind, .) ## test!
-  dist2x <- dist(x) %>% as.matrix %>% extract(centroids, ) %>% .^2
+  require(fields) # faster euclidean distance matrix calculation
+  if(length(x[[1]]) != 1) x %<>% Reduce(rbind, .)
+  dist2x <- 
+    rdist(x) %>%
+    extract(centroids, ) %>%
+    {.^2}
   
   if(!y.discrete) {
     if(length(y[[1]] != 1)) y %<>% Reduce(rbind, .) ## test!
-    dist2y <- dist(y) %>% as.matrix %>% extract(centroids, ) %>% .^2
+    dist2y <-
+      rdist(y) %>%
+      extract(centroids, ) %>%
+      {.^2}
   }
     
   if(length(sigmas) == 1 & length(lambdas) == 1) {
@@ -77,9 +86,15 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
     # no CV
     sigma.chosen <- sigmas
     lambda.chosen <- lambdas
-    phix.fin <- dist2x %>% divide_by(-2*sigma.chosen^2) %>% exp
+    phix.fin <- 
+      dist2x %>%
+      divide_by(-2*sigma.chosen^2) %>%
+      exp
     if(!y.discrete) {
-      phiy.fin <- dist2y %>% divide_by(-2*sigma.chosen^2) %>% exp
+      phiy.fin <-
+        dist2y %>%
+        divide_by(-2*sigma.chosen^2) %>% 
+        exp
     } else {
       phiy.fin <- phiy.discr
     }
@@ -101,11 +116,15 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
     ###
     ##
     phisx <- array(dist2x, dim = c(nbfuns, n, length(sigmas)))
-    phisx %<>% sweep(3, -2*sigmas^2, '/') %>% exp
+    phisx %<>% 
+      sweep(3, -2*sigmas^2, '/') %>%
+      exp
     
     if(!y.discrete) {
       phisy <- array(dist2y, dim = c(nbfuns, n, length(sigmas)))
-      phisy %<>% sweep(3, -2*sigmas^2, '/') %>% exp 
+      phisy %<>% 
+        sweep(3, -2*sigmas^2, '/') %>%
+        exp 
     } else {
       ### this is an array so I don't have to rewrite array slicing below which corresponds to
       ### trying out various sigmas in continious y case; hope that doesn't take so much time and memory
@@ -141,7 +160,7 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
         for(lambda in lambdas) {
           lambda.ind <- which(lambdas == lambda)
           alpha.cv <- solve(H.cv.out[,,k] + lambda*diag(nbfuns)) %*% h.cv.out[,,k]
-          J.cv <- t(alpha.cv) %*% H.cv.in[,,k] %*% alpha.cv /2 - t(h.cv.in[,,k]) %*% alpha.cv
+          J.cv <- t(alpha.cv) %*% H.cv.in[,,k] %*% alpha.cv / 2 - t(h.cv.in[,,k]) %*% alpha.cv
           
           cvScores[sigma.ind, lambda.ind] %<>% add(J.cv/fold)
         }
@@ -160,8 +179,24 @@ lsmi.vanilla <- function(x, y, sigmas, lambdas, nbfuns, y.discrete = FALSE, c = 
   h.fin <- rowMeans(phi.fin)
   H.fin <- (phix.fin %*% t(phix.fin)) * (phiy.fin %*% t(phiy.fin)) %>% divide_by(n^2)
   alpha.fin <- solve(H.fin + lambda.chosen*diag(nbfuns)) %*% h.fin
-  # final result #
-  MI <- t(h.fin) %*% alpha.fin %>% as.numeric %>% subtract(1) %>% multiply_by(c)
+  # final result as authors do#
+  MI <- switch(MImethod,
+               bits = 
+                 t(alpha.fin) %*% phi.fin %>%
+                 inset(. <= 0, 0.001) %>% # if this is removed, function will rarely produce NaNs
+                 log(base = 2) %>%
+                 mean,
+               nats = 
+                 t(alpha.fin) %*% phi.fin %>%
+                 inset(. <= 0, 0.001) %>% # if this is removed, function will rarely produce NaNs
+                 log(base = exp(1)) %>%
+                 mean,
+               suzuki =
+                 t(h.fin) %*% alpha.fin %>%
+                 as.numeric %>%
+                 subtract(1) %>%
+                 multiply_by(c)
+               )
   MI
 }
 
