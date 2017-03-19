@@ -7,7 +7,7 @@ nl.ex1.x <- runif(50, -1, 1)
 nl.ex1.y <- sin(nl.ex1.x*4*pi) + rnorm(50, 0, 0.25)
 
 nl.ex1.cor <- cor(nl.ex1.x, nl.ex1.y) %>% round(3)
-nl.ex1.lsmi <- lsmi.vanilla(as.list(nl.ex1.x), as.list(nl.ex1.y)) %>% round(3)
+nl.ex1.lsmi <- lsmi.vanilla(nl.ex1.x, nl.ex1.y) %>% round(3)
 
 # plotting dependence #
 library(ggplot2)
@@ -29,7 +29,7 @@ nl.ex2.x <- runif(50, -1, 1)
 nl.ex2.y <- nl.ex2.x^2 + rnorm(50, 0, 0.1)
 
 nl.ex2.cor <- cor(nl.ex2.x, nl.ex2.y) %>% round(3)
-nl.ex2.lsmi <- lsmi.vanilla(as.list(nl.ex2.x), as.list(nl.ex2.y)) %>% round(3)
+nl.ex2.lsmi <- lsmi.vanilla(nl.ex2.x, nl.ex2.y) %>% round(3)
 
 ggplot(data.frame(x = nl.ex2.x, y = nl.ex2.y), aes(x, y)) + 
   geom_point(color = 'orange', size = 2) + 
@@ -49,7 +49,7 @@ nl.ex3.x <- runif(50, -1, 1)
 nl.ex3.y <- sample(c(-1,1), 50, T, c(1/2,1/2))*sqrt(1 - nl.ex3.x^2) + rnorm(50, 0, 0.1)
 
 nl.ex3.cor <- cor(nl.ex3.x, nl.ex3.y) %>% round(3)
-nl.ex3.lsmi <- lsmi.vanilla(as.list(nl.ex3.x), as.list(nl.ex3.y)) %>% round(3)
+nl.ex3.lsmi <- lsmi.vanilla(nl.ex3.x, nl.ex3.y) %>% round(3)
 
 ggplot(data.frame(x = nl.ex3.x, y = nl.ex3.y), aes(x, y)) + 
   coord_cartesian(xlim = c(-1, 1), ylim = c(-1.1, 1.1)) +
@@ -101,8 +101,8 @@ for(i in 1:nlin.step) {
   noise.vs.lsmi.nlin[subs.data, 'y'] <- sample(c(-1,1), nlin.dots, TRUE)*sqrt(1 - noise.vs.lsmi.nlin[subs.data, 'x']^2) + rnorm(nlin.dots, 0, noise.vs.lsmi.nlin[subs.data[1], 'noise'])
   
   nlin.lsmi.values[subs.vals, 'lsmi'] <- replicate(nlin.rep.lsmi,
-                                                   lsmi.vanilla(as.list(noise.vs.lsmi.nlin[subs.data, 'x']), 
-                                                        as.list(noise.vs.lsmi.nlin[subs.data, 'y']))
+                                                   lsmi.vanilla(noise.vs.lsmi.nlin[subs.data, 'x'], 
+                                                        noise.vs.lsmi.nlin[subs.data, 'y'])
   )
   
   current.cortest <- cor.test(noise.vs.lsmi.nlin$x[subs.data],
