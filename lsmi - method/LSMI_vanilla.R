@@ -23,6 +23,10 @@ lsmi.vanilla <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete 
   
   ## some notations for convenience
   if(length(x) != length(y)) stop('Lengths of x and y are different!')
+  ## support for one-dimensional numerics x and y
+  if(is.numeric(x)) x %<>% as.list
+  if(is.numeric(y) & !y.discrete) y %<>% as.list
+  
   n <- length(x)
   
   ## basis functions ##
@@ -49,7 +53,7 @@ lsmi.vanilla <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete 
     }
     ## transforming multi-dimensional class vectors to integers
     ## to later obtain phiY in a similar fashion as if length(y) was 1
-    if(length(y[[1]]) != 1) y %<>% lapply(., paste, collapse = '')
+    if(length(y[[1]]) != 1) y %<>% lapply(paste, collapse = '')
     ## if y is numeric, then checking for equality is performed faster
     ## so we transform y to numeric in any case
     ## we've just  checked if all elements of y are of same class so y[[1]] is enough

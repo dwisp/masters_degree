@@ -8,9 +8,12 @@ library(magrittr)
 # what's the typical dispersion value for lsmi in discrete case?
 # will it be able to differentiate original case from  one with permuted labels?
 
-tst.disy.x1 <- as.list(c(rnorm(50, 2, 2), rnorm(50, -2, 2)))
-tst.disy.y1 <- as.list(c(rep('a', 50), rep('b', 50)))
-tst.disy.y1_wrong <- tst.disy.y1 %>% unlist %>% sample %>% as.list
+tst.disy.x1 <- c(rnorm(50, 2, 2), rnorm(50, -2, 2))
+tst.disy.y1 <- c(rep('a', 50), rep('b', 50))
+tst.disy.y1_wrong <- 
+  tst.disy.y1 %>%
+  unlist %>%
+  sample
 
 tst.disy.lsmi1 <- replicate(50, lsmi.vanilla(tst.disy.x1, tst.disy.y1, y.discrete = T))
 tst.disy.lsmi1_wrong <- replicate(50, lsmi.vanilla(tst.disy.x1, tst.disy.y1_wrong, y.discrete = T))
@@ -19,7 +22,9 @@ df.disy.lsmi_comparison <- data.frame(original_labels = tst.disy.lsmi1,
                                       permuted_labels = tst.disy.lsmi1_wrong)
 library(reshape2)
 library(dplyr)
-df.disy.lsmi_comparison %<>% melt %>% rename(case = variable)
+df.disy.lsmi_comparison %<>%
+  melt %>%
+  rename(case = variable)
 
 library(ggplot2)
 ggplot(df.disy.lsmi_comparison, aes(case, value)) +
@@ -34,8 +39,12 @@ ggplot(df.disy.lsmi_comparison, aes(case, value)) +
 ## providing 'right' clustering labels to the method
 
 library(dendextend)
-hc.iris <- iris[, -5] %>% as.matrix %>% dist %>% hclust(method = 'ward.D2') 
-iris.cols <- iris$Species %>% as.factor
+hc.iris <- iris[, -5] %>%
+  as.matrix %>%
+  dist %>%
+  hclust(method = 'ward.D2') 
+
+iris.cols <- as.factor(iris$Species)
 levels(iris.cols) <- 1:length(levels(iris.cols))
 iris.cols %<>% as.numeric
 
@@ -47,6 +56,7 @@ hc.iris %>%
   set('leaves_col', iris.cols[hc.iris$order]) %>%
   set('leaves_cex', 1) %>%
   plot 
+
 hc.iris %>% 
   as.dendrogram %>%
   rect.dendrogram(k = 3, lty = 5, lwd = 1, xpd = T, lower_rect = -0.25, upper_rect = 1.6,
@@ -54,15 +64,26 @@ hc.iris %>%
 dev.off()
 
 hc.iris.labels <- cutree(hc.iris, k = 3)
-hc.iris.labels_wrong <- hc.iris.labels %>% sample
+hc.iris.labels_wrong <- 
+  hc.iris.labels %>%
+  sample
 
 ## slicing the data by rows to produce list of 4-dimensional vectors
 iris4lsmi <- split(as.matrix(iris[, -5]), row(iris[,-5]))
-iris.2classes <- iris[5] %>% unlist %>% as.character %>% inset(. == 'versicolor', 'virginica')
-iris.2classes_wrong <- iris[5] %>% unlist %>% as.character %>% inset(. == 'setosa', 'virginica')
+iris.2classes <- 
+  iris[5] %>%
+  unlist %>%
+  as.character %>%
+  inset(. == 'versicolor', 'virginica')
+
+iris.2classes_wrong <- 
+  iris[5] %>%
+  unlist %>%
+  as.character %>%
+  inset(. == 'setosa', 'virginica')
 
 iris.lsmi <- replicate(25, lsmi.vanilla(iris4lsmi, hc.iris.labels, y.discrete = TRUE))
-iris.lsmi_true <- replicate(25, lsmi.vanilla(iris4lsmi, iris[5] %>% unlist, y.discrete = TRUE))
+iris.lsmi_true <- replicate(25, lsmi.vanilla(iris4lsmi, unlist(iris[5]), y.discrete = TRUE))
 iris.lsmi_twoclasses <- replicate(25, lsmi.vanilla(iris4lsmi, iris.2classes, y.discrete = TRUE))
 iris.lsmi_twoclasses_wrong <- replicate(25, lsmi.vanilla(iris4lsmi, iris.2classes_wrong, y.discrete = TRUE))
 iris.lsmi_wrong <- replicate(25, lsmi.vanilla(iris4lsmi, hc.iris.labels_wrong, y.discrete = TRUE))
@@ -116,7 +137,9 @@ iris.lsmi.matrix <- matrix(0, nrow = 4, ncol = 4)
 dimnames(iris.lsmi.matrix) <- list(colnames(iris)[1:4], colnames(iris)[1:4])
 for(i in 1:4) {
   for(j in 1:i) {
-    iris.lsmi.matrix[i, j] <- replicate(10, lsmi.vanilla(iris[,i] %>% as.list, iris[,j] %>% as.list)) %>% median
+    iris.lsmi.matrix[i, j] <- 
+      replicate(10, lsmi.vanilla(iris[,i], iris[,j])) %>%
+      median
   }
 }
 

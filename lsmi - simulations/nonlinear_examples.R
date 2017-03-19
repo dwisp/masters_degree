@@ -124,7 +124,7 @@ rm(current.cortest)
 
 # plotting results
 library(reshape2)
-nlin.lsmi.values %<>% melt(., id = c('noise', 'corhat.cimin', 'corhat.cimax'))
+nlin.lsmi.values %<>% melt(id = c('noise', 'corhat.cimin', 'corhat.cimax'))
 
 ggplot(data = nlin.lsmi.values, aes(noise, value)) + 
   geom_point(aes(color = factor(variable)), size = 3, alpha = 0.3) + 
