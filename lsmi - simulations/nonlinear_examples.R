@@ -178,6 +178,7 @@ library(ggplot2)
 library(stringr)
 ggplot(data = nlin.lsmi.values_par, aes(noise, value)) + 
   geom_point(aes(color = variable), size = 3, alpha = 0.26) + 
+  # stat_smooth(aes(color = variable), se = FALSE, method = 'loess') +
   geom_errorbar(aes(ymin = corhat.cimin_par, ymax = corhat.cimax_par, color = variable), width = 0.005) +
   scale_color_hue(labels = c("LSMI estimate", "Cor estimate")) +
   theme(plot.background = element_rect(fill = 'aliceblue'), legend.title = element_blank()) + 
@@ -194,7 +195,8 @@ nlin.lsmi.values_sin <-
   filter(variable %in% c('lsmi_sin', 'corhat_sin'))
 
 ggplot(data = nlin.lsmi.values_sin, aes(noise, value)) + 
-  geom_point(aes(color = variable), size = 3, alpha = 0.26) + 
+  geom_point(aes(color = variable), size = 3, alpha = 0.26) +
+  # stat_smooth(aes(color = variable), se = FALSE, method = 'loess') +
   geom_errorbar(aes(ymin = corhat.cimin_sin, ymax = corhat.cimax_sin, color = variable), width = 0.005) +
   scale_color_hue(labels = c("LSMI estimate", "Cor estimate")) +
   theme(plot.background = element_rect(fill = 'aliceblue'), legend.title = element_blank()) + 
@@ -213,6 +215,7 @@ nlin.lsmi.values_cir <-
 
 ggplot(data = nlin.lsmi.values_cir, aes(noise, value)) + 
   geom_point(aes(color = variable), size = 3, alpha = 0.26) + 
+  # stat_smooth(aes(color = variable), se = FALSE, method = 'loess') +
   geom_errorbar(aes(ymin = corhat.cimin_cir, ymax = corhat.cimax_cir, color = variable), width = 0.005) +
   scale_color_hue(labels = c("LSMI estimate", "Cor estimate")) +
   theme(plot.background = element_rect(fill = 'aliceblue'), legend.title = element_blank()) + 

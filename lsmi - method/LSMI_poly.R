@@ -3,7 +3,7 @@
 #####################################################################
 
 
-lsmi.poly <- function(x, y, pow.from = 1, pow.to = 5, pow.by = 1, MImethod = c('bits', 'nats', 'suzuki')) {
+lsmi.poly <- function(x, y, pow.from = 1, pow.to = 3, pow.by = 1, MImethod = c('bits', 'nats', 'suzuki')) {
   library(magrittr)
   #! various technical operation and
   # foolproof code
@@ -29,7 +29,7 @@ lsmi.poly <- function(x, y, pow.from = 1, pow.to = 5, pow.by = 1, MImethod = c('
   ker.add.step <- ceiling(ceiling(mad(pairwiseDPs)) / ker.add.scale)
   ker.add.space <- seq(-ker.add.scale, ker.add.scale, by = ker.add.step)
   
-  lambda.space <- 10 ^ seq(-1, 0, length.out = 8)
+  lambda.space <- 10 ^ seq(-3, 0, length.out = 8)
   
   # Cross-Validation
   fold <- 5
@@ -134,17 +134,17 @@ lsmi.poly <- function(x, y, pow.from = 1, pow.to = 5, pow.by = 1, MImethod = c('
   fin.alha <- solve(fin.H + fin.lambda*diag(nbfun)) %*% fin.h
   
   MImethod <- match.arg(MImethod)
-  print('alpha = ')
-  print(fin.alha)
-  print('alpha^t * PHI = ')
-  print(t(fin.alha) %*% fin.PHI)
-  print('n of negative instances')
-  print(sum((t(fin.alha) %*% fin.PHI) <= 0))
-  print('final PHI')
-  print(fin.PHI)
-  print('final H')
-  print(fin.H)
-  print(rankMatrix(fin.H))
+  # print('alpha = ')
+  # print(fin.alha)
+  # print('alpha^t * PHI = ')
+  # print(t(fin.alha) %*% fin.PHI)
+  # print('n of negative instances')
+  # print(sum((t(fin.alha) %*% fin.PHI) <= 0))
+  # print('final PHI')
+  # print(fin.PHI)
+  # print('final H')
+  # print(fin.H)
+  # print(rankMatrix(fin.H))
   MI <- switch(MImethod,
                bits = 
                  t(fin.alha) %*% fin.PHI %>%

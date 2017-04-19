@@ -131,6 +131,101 @@ ggplot(data = lin.lsmi.values, aes(cor, value)) +
   
   ggsave('corhat_vs_lsmi_zoom.png')
 
+# Mean squared error vs. dependence strength  #
+
+mse <- function(obs, eta) {
+  require(magrittr)
+  obs %>%
+    subtract(eta) %>%
+    {.^2} %>%
+    mean
+}
+
+## Function for calculaing MSE vs. nbfuns
+MSEvsNbfuns <- function(x, y, nrep = 25, nstep = 10, ydisc = FALSE) {
+  require(magrittr)
+  require(dplyr)
+  if(!is.list(x)) x %<>% as.list
+  if(!is.list(y)) y %<>% as.list
+  
+  maxnbfuns <- length(x)
+  nbfun.seq <- seq(10, maxnbfuns, by = nstep)
+  
+  df.vals <- data_frame(nbfuns = nbfun.seq %>% rep(each = nrep), 
+                        lsmi = numeric(length(nbfun.seq)*nrep))
+  
+  df.mse <- data_frame(nbfuns = nbfun.seq, 
+                       mse = numeric(length(nbfun.seq)))
+  
+  indices.vals <- 1:nrep
+  for(i in seq(10, maxnbfuns, by = nstep)) {
+    df.vals$lsmi[indices.vals] <- replicate(nrep, lsmi.vanilla(x, y, nbfuns = i, y.discrete = ydisc))
+    indices.vals %<>% add(nrep)
+  }
+  
+  df.mse$mse <- lapply(split(df.vals$lsmi, rep(seq(10, maxnbfuns, by = nstep), each = nrep)), 
+                       mse, 
+                       eta = median(df.vals$lsmi %>% tail(nrep))) %>% as.numeric
+  df.mse
+}
+
+# Generating multivariate normal data with different correlation strengths
+library(mvtnorm)
+library(stringr)
+listXY <- lapply(mvtsigma.list[seq(1, 21, by = 5)], rmvnorm, n = 150, mean = c(0, 0))
+
+for(i in 1:5) {
+  colnames(listXY[[i]]) <- 
+    mvtsigma.list[seq(1, 21, by = 5)] %>%
+    sapply(extract, 1, 2) %>%
+    extract(i) %>%
+    rep(2)
+}
+
+MSEvsDepStr <- function(xymat) {
+  require(magrittr)
+  require(stringr)
+  x <- xymat[, 1]
+  y <- xymat[, 2]
+  sigma <- 
+    colnames(xymat) %>%
+    extract(1)
+  
+  df.lsmi <- MSEvsNbfuns(x = x, y = y)
+  df.lsmi %<>% mutate(depstr = rep(sigma, nrow(df.lsmi)))
+  df.lsmi
+}
+
+#listByDepStr <- lapply(listXY, MSEvsDepStr)
+df.depStr <- 
+  do.call(rbind, listByDepStr) %>%
+  filter(depstr != 0) %>%
+  mutate(depstr = as.factor(depstr), logMse = log(mse, 10), rmse = sqrt(mse), logRMse = log(rmse, 10))
+
+ggplot(df.depStr, aes(nbfuns, logRMse)) +
+  geom_point(aes(color = depstr), size = 3) + 
+  labs(x = 'number of base functions considered',
+       y = 'log10(RMSE)') +
+  geom_smooth(method = 'loess', se = F, aes(color = depstr)) +
+  scale_x_continuous(breaks = seq(0, 150, by = 10)) +
+  scale_y_continuous(breaks = unique(c(seq(0, floor(min(df.depStr$logRMse)), by = -0.2), seq(0, ceiling(max(df.depStr$logRMse)), by = 0.2)))) + 
+  scale_colour_discrete(name = 'Pearson\ncorrelation') +
+  ggtitle('RMSE vs. number of base functions considered for RBF MI') +
+  ggsave('nbfuns_depstr_log.png')
+
+df.depStr %<>% filter(depstr != 1)
+
+ggplot(df.depStr, aes(nbfuns, rmse)) +
+  geom_point(aes(color = depstr), size = 3) + 
+  labs(x = 'number of base functions considered',
+       y = 'RMSE') +
+  geom_smooth(method = 'loess', se = F, aes(color = depstr)) +
+  scale_x_continuous(breaks = seq(0, 150, by = 10)) +
+  scale_y_continuous(breaks = seq(0, ceiling(max(df.depStr$rmse)), by = 0.02)) + 
+  scale_colour_discrete(name = 'Pearson\ncorrelation') +
+  ggtitle('RMSE vs. number of base functions considered for RBF MI') +
+  ggsave('nbfuns_depstr.png')
+
 
 ## parametric graph (LSMI, corhat) as a function of true cor
 ## is most likely obsolette

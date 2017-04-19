@@ -3,12 +3,13 @@
 #########################
 
 # very close to classical implementation except a few changes:
-# 1. arbitrary multiplier c instead of 1/2
+# 1. MI is calculated properly in bits / nats; introducing arbitrary multiplier c instead of 1/2
 # 2. fixed 'mean' bug found in native Matlab implementation
 # 3. slightly modified parameter space:
 # excluded largest parameters lambda and sigma which are probably never actually used to reduce computational time
-# 4. number of basis functions is 100 if sample size is greater than 100
-# 5. basis functions aren't permuted if max(nbfuns) > current sample size
+# it's actually a lot better to use adaptive sigmas w.r.t. distance distribution
+# 4. number of kernel functions is 100 if sample size is greater than 100
+# 5. kernel functions aren't permuted if max(nbfuns) > current sample size
 
 lsmi.vanilla <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = FALSE, # main parameters
                          sigmas, lambdas, nbfuns, c = 1.5) { # rarely used parameters
@@ -24,19 +25,21 @@ lsmi.vanilla <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete 
   ## some notations for convenience
   if(length(x) != length(y)) stop('Lengths of x and y are different!')
   ## support for one-dimensional numerics x and y
+  ## if y is integer, it should be converted to factor manually
   if(is.numeric(x)) x %<>% as.list
-  if(is.numeric(y) & !y.discrete) y %<>% as.list
+  if(is.numeric(y) & not(y.discrete)) y %<>% as.list
   
   n <- length(x)
   
-  ## basis functions ##
+  ## kernel (a.k.a base) functions ##
   ### we only take nbfuns out of total of n
   centroids <- 1:n
   ## if n is less than nbfuns, then no permutation is done on later stages
   if(nbfuns < n) centroids %<>% sample %>% extract(1:nbfuns)
   
   #### discrete case handling; factor intuitively says y is discrete
-  if(y.discrete | is.factor(y)) {
+  if(is.factor(y)) y.discrete <- TRUE
+  if(y.discrete) {
     ## vector labels are supported as well
     ## we already know that length(x) == length(y)
     if(class(y) != 'list') {

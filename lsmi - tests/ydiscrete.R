@@ -82,7 +82,7 @@ iris.2classes_wrong <-
   as.character %>%
   inset(. == 'setosa', 'virginica')
 
-iris.lsmi <- replicate(25, lsmi.vanilla(iris4lsmi, hc.iris.labels, y.discrete = TRUE))
+iris.lsmi <- replicate(25, lsmi.vanilla(iris4lsmi, hc.iris.labels, y.discrete = TRUE, sigmas = 10^seq(-2, 5, length.out = 8)))
 iris.lsmi_true <- replicate(25, lsmi.vanilla(iris4lsmi, unlist(iris[5]), y.discrete = TRUE))
 iris.lsmi_twoclasses <- replicate(25, lsmi.vanilla(iris4lsmi, iris.2classes, y.discrete = TRUE))
 iris.lsmi_twoclasses_wrong <- replicate(25, lsmi.vanilla(iris4lsmi, iris.2classes_wrong, y.discrete = TRUE))
@@ -103,8 +103,9 @@ qplot(factor(case), value, data = iris.lsmi.results,
 
 #################################################################
 # looking how lsmi changes with number of clusters in iris data #
-lsmi.vs.clustnum <- data.frame(lsmi = rep(0, 25*5),
-                               k = rep(2:6, each = 25))
+lsmi.vs.clustnum <- 
+  data_frame(lsmi = rep(0, 25*5), k = rep(2:6, each = 25))
+  
 subs.data <- 1:25
 for(clustnum in 2:6) {
   loc.clustLabs <- cutree(hc.iris, k = clustnum)
@@ -114,9 +115,10 @@ for(clustnum in 2:6) {
 rm(subs.data)
 rm(loc.clustLabs)
 
-lsmi.vs.clustnum$k %<>% as.factor
-qplot(k, lsmi, data = lsmi.vs.clustnum, geom = 'boxplot', color = k,
-      xlab = 'number of clusters used in validation', ylab = 'lsmi estimate', 
+lsmi.vs.clustnum %<>% mutate(lsmi_adj = lsmi / sqrt(k), k = as.factor(k))
+
+qplot(k, lsmi_adj, data = lsmi.vs.clustnum, geom = 'boxplot', color = k,
+      xlab = 'number of clusters used in validation', ylab = 'lsmi estimate / sqrt(n. of clusters)', 
       main = 'Boxplot of discrete-case lsmi distributions vs. number of iris data clusters supplied 
       clusters are obtained by cutting hierarchical clustering tree') + 
   labs(color = 'n. of clusters') +
@@ -212,43 +214,11 @@ ggplot(nbfun.mse.values, aes(base.funs, var)) +
           Fisher iris data; y are labels denoting iris species') +
   ggsave('nbfuns_sd.png')
 
-## universal MSE function for plotting
-plotMSE <- function(x, y, nrep = 25, nstep = 10, ydisc = FALSE, plotTitle) {
-  library(magrittr)
-  if(!is.list(x)) x %<>% as.list
-  if(!is.list(y)) y %<>% as.list
-  if(missing(plotTitle)) plotTitle <- 'Mean squared error w.r.t. median LSMI calculated using all base functions'
-  
-  maxnbfuns <- length(x)
-  nbfun.seq <- seq(10, maxnbfuns, by = nstep)
-  
-  df.vals <- data.frame(nbfuns = nbfun.seq %>% rep(each = nrep), 
-                        lsmi = numeric(length(nbfun.seq)*nrep))
-  
-  df.mse <- data.frame(nbfuns = nbfun.seq, 
-                       mse = numeric(length(nbfun.seq)))
-  
-  indices.vals <- 1:nrep
-  for(i in seq(10, maxnbfuns, by = nstep)) {
-    df.vals$lsmi[indices.vals] <- replicate(nrep, lsmi.vanilla(x, y, nbfuns = i, y.discrete = ydisc))
-    indices.vals %<>% add(nrep)
-  }
-  
-  df.mse$mse <- lapply(split(df.vals$lsmi, rep(seq(10, maxnbfuns, by = nstep), each = nrep)), 
-                       mse, 
-                       eta = median(df.vals$lsmi %>% tail(nrep))) %>% as.numeric
-  
-  ggplot(df.mse, aes(nbfuns, mse)) +
-    geom_point(color = 'firebrick2') + 
-    labs(x = 'number of base functions considered',
-         y = 'mean squared error') +
-    ggtitle(plotTitle)
-}
-  
-plotMSE(iris[, 3], iris[, 4], nrep = 30, nstep = 10, 
-        plotTitle = 'Mean squared error w.r.t. median LSMI calculated using all 150 base functions,
-                     Iris Petal Length vs Iris Petal Width')
-  
+# ggplot(df.mse, aes(nbfuns, mse)) +
+#   geom_point(color = 'firebrick2') + 
+#   labs(x = 'number of base functions considered',
+#        y = 'mean squared error') +
+#   ggtitle(plotTitle)
   
 
   
