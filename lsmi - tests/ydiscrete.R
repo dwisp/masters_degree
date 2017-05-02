@@ -101,8 +101,10 @@ qplot(factor(case), value, data = iris.lsmi.results,
       a) hierarchical clustering b) original data and c) permuted clustering labels') +
   ggsave('iris_lsmi_hclust_validation.png')
 
-#################################################################
+###
 # looking how lsmi changes with number of clusters in iris data #
+###
+
 lsmi.vs.clustnum <- 
   data_frame(lsmi = rep(0, 25*5), k = rep(2:6, each = 25))
   
@@ -124,8 +126,9 @@ qplot(k, lsmi_adj, data = lsmi.vs.clustnum, geom = 'boxplot', color = k,
   labs(color = 'n. of clusters') +
   ggsave('iris_lsmi_vs_clustnum.png')
 
-#############################################
+###
 # testing how features correlate / lsmi-ate #
+###
 
 library(GGally)
 
@@ -159,8 +162,10 @@ ggplot(iris.lsmi.vs.cor, aes(lsmi, pcor)) +
                 '; p-value = ', tmp.cor_pcor_lsmi$p.value %>% round(3))) + 
   ggsave('iris_pcor_vs_lsmi.png')
 
-################################################################
+###
 # measuring accuracy depending on the (relative?) number of base functions
+###
+
 nbfun.prec.reps <- 25
 nbfun.prec.step <- 10
 
@@ -169,11 +174,8 @@ nbfun.lsmi.values <- data.frame(lsmi = rep(0, nbfun.prec.reps*(150 %/% nbfun.pre
 
 indices.vals <- 1:nbfun.prec.reps
 for(i in seq(10, 150, by = nbfun.prec.step)) {
-  nbfun.lsmi.values[indices.vals, 'lsmi'] <- replicate(nbfun.prec.reps, 
-                                                       lsmi.vanilla(iris4lsmi, iris$Species %>% unlist,
-                                                                    nbfuns = i)
-                                                       #test.x, test.x2, 
-                                                       )
+  nbfun.lsmi.values[indices.vals, 'lsmi'] <- 
+    replicate(nbfun.prec.reps, lsmi.vanilla(iris4lsmi, iris$Species, nbfuns = i))
   indices.vals %<>% add(nbfun.prec.reps)
 }
 rm(indices.vals)
@@ -181,20 +183,28 @@ rm(indices.vals)
 ## mean squared error auxilary function
 mse <- function(obs, eta) {
   require(magrittr)
-  out <- obs %>% subtract(eta) %>% .^2 %>% divide_by(length(.)) %>% sum
-  out
+  obs %>%
+    subtract(eta) %>%
+    {.^2} %>%
+    divide_by(length(.)) %>%
+    sum
 }
+rmse <- function(obs, eta) sqrt(mse(obs, eta))
 
-nbfun.mse.values <- data.frame(mse = rep(0, (150 %/% nbfun.prec.step)),
-                               base.funs = seq(10, 150, by = nbfun.prec.step))
+nbfun.mse.values <- data_frame(base.funs = seq(10, 150, by = nbfun.prec.step))
 
 # mean squarred error compared to the median LSMI computed using all possible base functions
 ## splitting results to feed them as lists to mse
-nbfun.mse.values$mse <- lapply(split(nbfun.lsmi.values$lsmi, rep(seq(10, 150, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-                              mse, eta = median(nbfun.lsmi.values$lsmi %>% tail(nbfun.prec.reps))) %>% as.numeric
+nbfun.mse.values$mse <- 
+  lapply(
+    split(nbfun.lsmi.values$lsmi, rep(seq(10, 150, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    mse, eta = median(nbfun.lsmi.values$lsmi %>% tail(nbfun.prec.reps))) %>% as.numeric
 
-nbfun.mse.values$var <- lapply(split(nbfun.lsmi.values$lsmi, rep(seq(10, 150, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-                               sd) %>% as.numeric #%>% .^2
+nbfun.mse.values$var <- 
+  lapply(
+    split(nbfun.lsmi.values$lsmi, rep(seq(10, 150, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    sd) %>%
+  as.numeric #%>% .^2
 
 ## plotting mse
 ggplot(nbfun.mse.values, aes(base.funs, mse)) +
@@ -220,11 +230,136 @@ ggplot(nbfun.mse.values, aes(base.funs, var)) +
 #        y = 'mean squared error') +
 #   ggtitle(plotTitle)
   
+###
+# testing out new base functions selection system
+###
 
+nbfun.lsmi.values.extra <- 
+  data.frame(base.funs = rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps))
+
+iris.cropS <- 
+  iris$Species %>%
+  equals('setosa') %>%
+  which %>%
+  sample(size = 25)
+
+irisSpecies.cropS <- 
+  iris$Species %>%
+  extract(-iris.cropS)
+
+iris4lsmi.cropS <-
+  iris4lsmi %>%
+  extract(-iris.cropS)
+
+###
+
+iris.cropVi <- 
+  iris$Species %>%
+  equals('virginica') %>%
+  which %>%
+  sample(size = 25)
+
+irisSpecies.cropVi <- 
+  iris$Species %>%
+  extract(-iris.cropVi)
+
+iris4lsmi.cropVi <-
+  iris4lsmi %>%
+  extract(-iris.cropVi)
+
+###
+
+indices.vals <- 1:nbfun.prec.reps
+for(i in seq(15, 125, by = nbfun.prec.step)) {
+  nbfun.lsmi.values.extra[indices.vals, 'lsmi.S'] <-
+    replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi.cropS, irisSpecies.cropS, nbfuns = i, method.nbfuns = 'non-paired'))
+
+  nbfun.lsmi.values.extra[indices.vals, 'lsmi.S.Orig'] <-
+    replicate(nbfun.prec.reps, lsmi.vanilla(iris4lsmi.cropS, irisSpecies.cropS, nbfuns = i))
+
+  nbfun.lsmi.values.extra[indices.vals, 'lsmi.Vi'] <-
+    replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi.cropVi, irisSpecies.cropVi, nbfuns = i, method.nbfuns = 'non-paired'))
+
+  nbfun.lsmi.values.extra[indices.vals, 'lsmi.Vi.Orig'] <- 
+    replicate(nbfun.prec.reps, lsmi.vanilla(iris4lsmi.cropVi, irisSpecies.cropVi, nbfuns = i))
   
-  
-  
-  
+  indices.vals %<>% add(nbfun.prec.reps)
+}
+rm(indices.vals)
+
+nbfun.mse.values.extra <- 
+  data_frame(base.funs = seq(15, 125, by = nbfun.prec.step))
+
+# mean squarred error compared to the median LSMI computed using all possible base functions
+## splitting results to feed them as lists to mse
+nbfun.mse.values.extra$mse.S <- 
+  sapply(
+    split(nbfun.lsmi.values.extra$lsmi.S, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    rmse, eta = median(nbfun.lsmi.values.extra$lsmi.S %>% tail(nbfun.prec.reps)))
+
+nbfun.mse.values.extra$mse.S.Orig <- 
+  sapply(
+    split(nbfun.lsmi.values.extra$lsmi.S.Orig, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    rmse, eta = median(nbfun.lsmi.values.extra$lsmi.S.Orig %>% tail(nbfun.prec.reps)))
+
+nbfun.mse.values.extra$mse.Vi <- 
+  sapply(
+    split(nbfun.lsmi.values.extra$lsmi.Vi, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    rmse, eta = median(nbfun.lsmi.values.extra$lsmi.Vi %>% tail(nbfun.prec.reps)))
+
+nbfun.mse.values.extra$mse.Vi.Orig <- 
+  sapply(
+    split(nbfun.lsmi.values.extra$lsmi.Vi.Orig, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    rmse, eta = median(nbfun.lsmi.values.extra$lsmi.Vi.Orig %>% tail(nbfun.prec.reps)))
+
+library(reshape2)
+nbfun.mse.values.extra %<>% melt(id.vars = 'base.funs')
+# nbfun.mse.values.extra$var <- 
+#   sapply(
+#     split(nbfun.lsmi.values.extra$lsmi.S, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+#     sd)
+
+## plotting mse
+library(ggplot2)
+ggplot(nbfun.mse.values.extra, 
+       aes(base.funs, value, 
+           color = variable, 
+           shape = variable)) + 
+  stat_smooth(method = 'loess', se = FALSE) +
+  geom_point(size = 3, alpha = 0.8) + 
+  geom_segment(aes(x = 38, xend = 15, y = 1.35, yend = 1.35), size = 1.2, color = 'olivedrab4') +
+  annotate('text', x = 28, y = 1.4, label = '1.35 - optimal MI value', color = 'black') +
+  guides(color = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold')),
+         shape = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold'))) +
+  scale_x_continuous(breaks = seq(15, 125, by = 10)) + 
+  scale_y_continuous(breaks = seq(0, 1.5, by = 0.25)) +
+  labs(x = 'Number of centroids considered',
+       y = 'Root of mean squared error',
+       color = 'Centroid selection method',
+       shape = 'Centroid selection method') +
+  theme(legend.background = element_rect(colour = 'darkgrey', fill = 'lightgrey'), legend.position = c(0.75, 0.8), legend.key.height = unit(1.5, 'lines'), 
+        title = element_text(size = 8, angle = 0)) +
+  scale_shape_manual(values = c(18, 18, 17, 17), labels = c('Setosa sparsed\nNon-paired', 'Virginica sparsed\nNon-paired', 'Setosa sparsed\nUniform', 'Virginica sparsed\nUniform')) +
+  scale_color_discrete(labels = c('Setosa sparsed\nNon-paired', 'Virginica sparsed\nNon-paired', 'Setosa sparsed\nUniform', 'Virginica sparsed\nUniform')) +
+  ggtitle(
+'Comparison of non-paired and uniform centroid selection methods on Fisher iris data
+Setosa / Virginica classes are half-sparsed. X is a set of 4-dimensional vectors and Y are labels denoting species'
+  ) +
+  ggsave('nbfuns_mse_nonpaired.png')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
