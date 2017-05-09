@@ -270,9 +270,15 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
   
   if(getWhat) {
     xc <- x[x.centroids]
-    yc <- y.origLabs[y.centroids] ## keeping original labels to match strings rather than integers
+    if(y.discrete) {
+      ## keeping original labels to match strings rather than integers
+      yc <- y.origLabs[y.centroids] 
+    } else {
+      yc <- y[y.centroids]
+      }
+    
     ## returning a function to calculate density ratio in a feasible region ##
-    What <- function(x0, y0, yd = FALSE, units = c('log2', 'log10', 'I')) {
+    What <- function(x0, y0, yd = FALSE, units = c('log2', 'log10', 'I', 'alphas', 'centroids')) {
       require(fields)
       require(magrittr)
       ## slight automation for convenience
@@ -280,7 +286,7 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
       ## distance from point x0 to all the centroids
       #af <- alpha.fin
       #sf <- sigma.chosen
-      units <- match.arg(units, c('log2', 'log10', 'I'))
+      units <- match.arg(units, c('log2', 'log10', 'I', 'alphas', 'centroids'))
       
       phi.x0xc <- 
         do.call(rbind, c(list(x0), xc)) %>%
@@ -306,9 +312,10 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
       phi.x0y0 <- phi.x0xc*phi.y0yc
       ## w_hat at (x0, y0)
       what.x0y0 <- sum(phi.x0y0*alpha.fin)
-      switch(units, log2 = log(what.x0y0, 2), log10 = log(what.x0y0, 10), I = what.x0y0)
+      switch(units, log2 = log(what.x0y0, 2), log10 = log(what.x0y0, 10), I = what.x0y0, 
+             alphas = alpha.fin, centroids = cbind(x = unlist(xc), y = unlist(yc)))
     }
-    return(What)
+    return(Vectorize(What, c('x0', 'y0')))
   }
   # final result as authors do#
   MI <- switch(MImethod,
