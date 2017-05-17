@@ -10,7 +10,7 @@ miFeaSelect <- function(dataset, classes, nbfuns, selection = c('backward', 'for
   
   selection %<>% match.arg(c('backward', 'forward'))
   nFea <- ncol(dataset)
-  if(missing(max.iter)) max.iter <- nFea - 1
+  if(missing(max.iter)) max.iter <- switch(selection, backward = nFea - 1, forward = nFea)
   if(missing(nbfuns)) nbfuns <- min(100, nrow(dataset))
   
   inds.fea <- 1:nFea
