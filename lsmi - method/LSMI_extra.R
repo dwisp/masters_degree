@@ -98,6 +98,7 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
     
     # ad-hoc solution for now; sometimes 'fair' rounding can give more than nbfuns (or even n) samples
     if(sum(split.of.classes) > nbfuns) split.of.classes[1] %<>% subtract(sum(split.of.classes) - nbfuns)
+    else if(sum(split.of.classes) < nbfuns) split.of.classes[length(split.of.classes)] %<>% add(nbfuns - sum(split.of.classes))
     class.indices <- list()
     for(y.ind in seq_along(unique(y))) {
       subclass <- as.numeric(names(split.of.classes)[y.ind])
