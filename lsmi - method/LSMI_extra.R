@@ -40,7 +40,7 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
   if(is.numeric(y) & not(y.discrete)) y %<>% as.list
   
   n <- length(x)
-  if(nbfuns > n) {
+  if(nbfuns > n & NBFmethod != 'non-paired') {
     warning('Specified number of base functions is greater than sample size! Setting nbfuns <- n.')
     nbfuns <- n
   }
@@ -278,7 +278,7 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
       }
     
     ## returning a function to calculate density ratio in a feasible region ##
-    What <- function(x0, y0, yd = FALSE, units = c('log2', 'log10', 'I', 'alphas', 'centroids')) {
+    What <- function(x0, y0, yd = FALSE, units = c('log2', 'log10', 'I', 'alphas', 'sigma', 'centroids')) {
       require(fields)
       require(magrittr)
       ## slight automation for convenience
@@ -286,14 +286,14 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
       ## distance from point x0 to all the centroids
       #af <- alpha.fin
       #sf <- sigma.chosen
-      units <- match.arg(units, c('log2', 'log10', 'I', 'alphas', 'centroids'))
+      units <- match.arg(units, c('log2', 'log10', 'I', 'alphas', 'sigma', 'centroids'))
       
       phi.x0xc <- 
         do.call(rbind, c(list(x0), xc)) %>%
         rdist() %>%
         extract(-1, 1) %>%
         {.^2} %>%
-        divide_by(-sigma.chosen^2) %>%
+        divide_by(-2*sigma.chosen^2) %>%
         exp()
       
       if(!yd) {
@@ -303,7 +303,7 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
           rdist() %>%
           extract(-1, 1) %>%
           {.^2} %>%
-          divide_by(-sigma.chosen^2) %>%
+          divide_by(-2*sigma.chosen^2) %>%
           exp()
       } else {
           phi.y0yc <- as.numeric(yc == y0)
@@ -313,9 +313,10 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
       ## w_hat at (x0, y0)
       what.x0y0 <- sum(phi.x0y0*alpha.fin)
       switch(units, log2 = log(what.x0y0, 2), log10 = log(what.x0y0, 10), I = what.x0y0, 
-             alphas = alpha.fin, centroids = cbind(x = unlist(xc), y = unlist(yc)))
+             alphas = alpha.fin, sigma = sigma.chosen, centroids = cbind(x = unlist(xc), y = unlist(yc)))
     }
-    return(Vectorize(What, c('x0', 'y0')))
+    #return(Vectorize(What, c('x0', 'y0'))) # prevents a correct return of centroids
+    return(What)
   }
   # final result as authors do#
   MI <- switch(MImethod,
@@ -333,7 +334,7 @@ lsmi.extra <- function(x, y, method = c('bits', 'nats', 'suzuki'), y.discrete = 
                  t(h.fin) %*% alpha.fin %>%
                  as.numeric %>%
                  subtract(1) %>%
-                 multiply_by(c)
+                 mean()
   )
   MI
 }
