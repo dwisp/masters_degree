@@ -13,12 +13,11 @@ library(ggplot2)
 library(ggthemes)
 library(stringr)
 ggplot(nl.ex1,  aes(x = x, y = y)) + 
-  geom_point(color = 'orange', size = 2, alpha = 0.8) + 
+  geom_point(color = 'red4', size = 2, alpha = 0.8) + 
   ggtitle(str_c('Nonlinear dependence example 1: high-frequency sine function\n x ~ U[-1;1]; y = sin 4*pi*x + N(0, 0.25); n = 50\n',
                 'Cor = ', nl.ex1.cor, '; ', 'LSMI = ', nl.ex1.lsmi)) +
   theme_solarized() +
-  #theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
-  ggsave('sine_example.png')
+  ggsave('sine_example.png', width = 8, height = 6)
 
 ###
 ## parabola
@@ -30,12 +29,11 @@ nl.ex2.cor <- cor(nl.ex2$x, nl.ex2$y) %>% round(3)
 nl.ex2.lsmi <- lsmi.vanilla(nl.ex2$x, nl.ex2$y) %>% round(3)
 
 ggplot(nl.ex2, aes(x = x, y = y)) + 
-  geom_point(color = 'orange', size = 2, alpha = 0.8) + 
+  geom_point(color = 'red4', size = 2, alpha = 0.8) + 
   ggtitle(str_c('Nonlinear dependence example 2: parabola\n x ~ U[-1;1]; y = x^2 + N(0, 0.1); n = 50\n',
                 'Cor = ', nl.ex2.cor, '; ', 'LSMI = ', nl.ex2.lsmi)) +
-  #theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
   theme_solarized() + 
-  ggsave('parabola_example.png')
+  ggsave('parabola_example.png', width = 8, height = 6)
 
 ###
 ## circle
@@ -48,12 +46,11 @@ nl.ex3.lsmi <- lsmi.vanilla(nl.ex3$x, nl.ex3$y) %>% round(3)
 
 ggplot(nl.ex3, aes(x = x, y = y)) + 
   coord_cartesian(xlim = c(-1, 1), ylim = c(-1.1, 1.1)) +
-  geom_point(color = 'orange', size = 2, alpha = 0.8) +
+  geom_point(color = 'red4', size = 2, alpha = 0.8) +
   scale_x_continuous(limits = c(-1.3, 1.3)) +
   scale_y_continuous(limits = c(-1.3, 1.3)) +
   ggtitle(str_c('Nonlinear dependence example 3: unit circle\n x ~ U[-1;1]; y = random(-1;1)*sqrt(1 - x^2) + N(0, 0.1), n = 50\n',
                 'Cor = ', nl.ex3.cor, '; ', 'LSMI = ', nl.ex3.lsmi)) +
-  #theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
   theme_solarized() +
   ggsave('circle_example.png', width = 8, height = 8)
 
@@ -181,15 +178,11 @@ library(ggplot2)
 library(stringr)
 ggplot(data = nlin.lsmi.values_par, aes(noise, value)) + 
   geom_point(aes(color = variable), size = 3, alpha = 0.26) + 
-  # stat_smooth(aes(color = variable), se = FALSE, method = 'loess') +
   geom_errorbar(aes(ymin = corhat.cimin_par, ymax = corhat.cimax_par, color = variable), width = 0.005) +
-  #scale_color_hue(labels = c("LSMI estimate", "Cor estimate")) +
-  #theme(plot.background = element_rect(fill = 'aliceblue'), legend.title = element_blank()) + 
   guides(color = guide_legend(override.aes = list(linetype=c(0, 1), shape = c(16, 16), alpha = 1))) + 
   ggtitle(str_c('LSMI / Cor estimates (95% CI) vs. noise strength\n x ~ U[-1;1]; Y = X^2 + N(0, sigma = noise), n = ', nlin.dots, ';')) + 
   theme_solarized() +
   scale_colour_solarized('blue', labels = c('LSMI estimate', 'Cor estimate')) +
-  #theme(plot.title = element_text(hjust = 0.5)) + 
   ggsave('nonlin_detection_noise_parabola.png')
 
 ## sine ##
@@ -201,14 +194,11 @@ nlin.lsmi.values_sin <-
 
 ggplot(data = nlin.lsmi.values_sin, aes(noise, value)) + 
   geom_point(aes(color = variable), size = 3, alpha = 0.26) +
-  # stat_smooth(aes(color = variable), se = FALSE, method = 'loess') +
   geom_errorbar(aes(ymin = corhat.cimin_sin, ymax = corhat.cimax_sin, color = variable), width = 0.005) +
   scale_colour_solarized('blue', labels = c('LSMI estimate', 'Cor estimate')) +
-  # theme(plot.background = element_rect(fill = 'aliceblue'), legend.title = element_blank()) + 
   guides(color = guide_legend(override.aes = list(linetype = c(0, 1), shape = c(16, 16), alpha = 1))) + 
   ggtitle(str_c('LSMI / Cor estimates (95% CI) vs. noise strength\n x ~ U[-1;1]; y = Sin 4*pi*x + N(0, sigma = noise), n = ', nlin.dots, ';')) + 
   theme_solarized() +
-  # theme(plot.title = element_text(hjust = 0.5)) + 
   ggsave('nonlin_detection_noise_sine.png')
 
 
@@ -221,14 +211,11 @@ nlin.lsmi.values_cir <-
 
 ggplot(data = nlin.lsmi.values_cir, aes(noise, value)) + 
   geom_point(aes(color = variable), size = 3, alpha = 0.26) + 
-  # stat_smooth(aes(color = variable), se = FALSE, method = 'loess') +
   geom_errorbar(aes(ymin = corhat.cimin_cir, ymax = corhat.cimax_cir, color = variable), width = 0.005) +
   scale_colour_solarized('blue', labels = c('LSMI estimate', 'Cor estimate')) +
-  # theme(plot.background = element_rect(fill = 'aliceblue'), legend.title = element_blank()) + 
   guides(color = guide_legend(override.aes = list(linetype=c(0, 1), shape = c(16, 16), alpha = 1))) + 
   theme_solarized() +
   ggtitle(str_c('LSMI / Cor estimates (95% CI) vs. noise strength\n x ~ U[-1;1]; y = random(-1;1)*sqrt(1 - x^2) + N(0, sigma = noise), n = ', nlin.dots, ';')) + 
-  # theme(plot.title = element_text(hjust = 0.5)) + 
   ggsave('nonlin_detection_noise_circle.png')
 
 

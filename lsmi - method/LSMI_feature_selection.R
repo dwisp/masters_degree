@@ -132,8 +132,12 @@ miFeaSelect <- function(dataset, classes, nbfuns, selection = c('backward', 'for
 # allFeatures: character vector with the full set of features from data
 # nfeat: how much features to leave in the final subset?
 # 
+###
+## Output values:
+###
 #
 # Returns a ggplot2's plot which can be extended
+#
 
 miFlowPlot <- function(miFeaData, allFeatures, nfeat) {
   require(ggplot2)
@@ -179,7 +183,7 @@ miFlowPlot <- function(miFeaData, allFeatures, nfeat) {
   if(!missing(allFeatures) & length(feasLeftOut) != 0) {
     # cutting missing features in case there's just too many (like in gene expression data)
     if(length(feasLeftOut) > 4) feasLeftOut %<>% str_c(.[1:4], '... <truncated>')
-    figure %<>% add(labs(caption = str_c('Features not shown: ', str_c(feasLeftOut, collapse = ',  '))))
+    figure %<>% add(labs(caption = str_c('Features included on step ', max(miFeaData$step), ': ', str_c(feasLeftOut, collapse = ',  '))))
     }
     
   ## showing which features have been chosen

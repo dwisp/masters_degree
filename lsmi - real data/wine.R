@@ -61,33 +61,14 @@ wqFeaSelBW <- miFeaSelect(wqSbsScaled[, -c(13, 14)], wqSbsScaled$wine, selection
 wqFeaSelFW <- miFeaSelect(wqSbsScaled[, -c(13, 14)], wqSbsScaled$wine, selection = 'forward')
 
 ### Backward selection
-ggplot(wqFeaSelBW, aes(x = iteration, y = miIter, size = importance, label = feaIter)) +
-  geom_line(color = 'lightcyan3', alpha = 0.8) +
-  geom_point(shape = 18) +
-  geom_text(color = 'palevioletred4', size = 3, vjust = 2) +
-  ylab('Mutual Information') +
-  scale_x_continuous(breaks = 0:11, limits = c(0, 11)) +
-  scale_y_continuous(breaks = seq(round(min(wqFeaSelBW$miIter) - 0.05, 2), round(max(wqFeaSelBW$miIter) + 0.05, 2), by = 0.02)) +
-  scale_size_area(limits = c(0, 0.8), breaks = seq(0, 0.6, by = 0.2)) +
-  theme(legend.position = c(0.85, 0.2)) +
-  guides(size = guide_legend(title = 'Importance\n(marginal MI)', override.aes = list(lty = NULL), ncol = 2)) +
-  ggsave('MI_backward_selection.png')
+miFlowPlot(wqFeaSelBW, colnames(wqSbsScaled[, -c(13, 14)]), nfeat = 2) + 
+  ggtitle('Backward feature elimination for wine classification using LSMI') +
+  ggsave('MI_backward_selection.png', width = 10, height = 4)
 
 ### Forward selection
-ggplot(wqFeaSelFW[-13, ], aes(x = iteration, y = miIter, size = importance, label = feaIter)) +
-  geom_line(color = 'lightcyan3', alpha = 0.8) +
-  geom_point(shape = 18) +
-  geom_text(color = 'palevioletred4', size = 3, vjust = 2) +
-  ylab('Mutual Information') +
-  scale_x_continuous(breaks = 0:12, limits = c(0, 12)) +
-  scale_y_continuous(breaks = seq(round(min(wqFeaSelFW$miIter) - 0.05, 2), round(max(wqFeaSelFW$miIter) + 0.05, 2), by = 0.02)) +
-  scale_size_area(limits = c(0, 0.8), breaks = seq(0, 0.6, by = 0.2)) +
-  theme(legend.position = c(0.85, 0.2)) +
-  guides(size = guide_legend(title = 'Importance\n(marginal MI)', override.aes = list(lty = NULL), ncol = 2)) +
-  ggsave('MI_forward_selection.png')
-
-# irisFeaSelBW <- miFeaSelect(as_data_frame(iris[, -5]), iris$Species, selection = 'backward')
-# irisFeaSelFW <- miFeaSelect(iris[, -5], iris$Species, selection = 'forward')
+miFlowPlot(wqFeaSelFW, nfeat = 5) + 
+  ggtitle('Forward feature selection for wine classification using LSMI') +
+  ggsave('MI_forward_selection.png', width = 10, height = 4)
 
 ###
 # fitting logistic regression ##
@@ -95,15 +76,12 @@ ggplot(wqFeaSelFW[-13, ], aes(x = iteration, y = miIter, size = importance, labe
 
 wineLogReg_full <- glm(data = select(wqSbsScaled, -id), formula = factor(wine) ~ ., family = 'binomial')
 wineLogReg_bw <- glm(data = select(wqSbsScaled, -id), 
-                      formula = factor(wine) ~ `volatile acidity` + `residual sugar` + density + `total sulfur dioxide`, 
-                      family = 'binomial')
+                     formula = factor(wine) ~ `residual sugar` + density + `total sulfur dioxide`, family = 'binomial')
 wineLogReg_fw <- glm(data = select(wqSbsScaled, -id),
-                          formula = factor(wine) ~ chlorides + `total sulfur dioxide`, 
-                          family = 'binomial')
+                     formula = factor(wine) ~ `total sulfur dioxide` + chlorides + `free sulfur dioxide` + density + `residual sugar`, family = 'binomial')
 
 wineGrid <- 
-  expand.grid(chlorides = seq(0, 1, by = 0.05), 
-              `total sulfur dioxide` = seq(0, 1, by = 0.05)) %>%
+  expand.grid(chlorides = seq(0, 1, by = 0.05), `total sulfur dioxide` = seq(0, 1, by = 0.05)) %>%
   as_data_frame()
 wineGrid$z <- predict(wineLogReg_bw, newdata = wineGrid, type = 'response')
 
@@ -116,39 +94,48 @@ wineTestScaled <-
   cbind(wine = wineTest$wine) %>%
   as_data_frame()
 
-wineLogRTest <- predict(wineLogReg_bw, newdata = wineTestScaled, type = 'response')
-wineLogRTest01 <- as.numeric(wineLogRTest > 0.5)
+wineLogRTest_full <- predict(wineLogReg_full, wineTestScaled, type = 'response')
+wineLogRTest_bw <- predict(wineLogReg_bw, wineTestScaled, type = 'response')
+wineLogRTest_fw <- predict(wineLogReg_fw, wineTestScaled, type = 'response')
 
-## red = 0, white = 1
-wineLogRerrors <- (as.numeric(factor(wineTest$wine)) - 1) != wineLogRTest01
-wineConfMat <- matrix(0, nrow = 2, ncol = 2, dimnames = list(c('pred Red', 'pred White'), c('Red', 'White')))
+###
+# ggROC
+###
 
-wineConfMat[1, 1] <- sum(wineLogRTest01 == 0 & wineTest$wine == 'red')
-wineConfMat[2, 2] <- sum(wineLogRTest01 == 1 & wineTest$wine == 'white')
-wineConfMat[1, 2] <- sum(wineLogRTest01 == 0 & wineTest$wine == 'white')
-wineConfMat[2, 1] <- sum(wineLogRTest01 == 1 & wineTest$wine == 'red')
+wq.df.roc <- 
+  data_frame(D = as.numeric(wineTestScaled$wine) - 1,
+             D.str = as.character(wineTestScaled$wine),
+             Full = wineLogRTest_full,
+             `Backward feat. elimination` = wineLogRTest_bw,
+             `Forward feat. selection` = wineLogRTest_fw) #%>%
+library(reshape2)
+wq.df.roc.melt <- melt(wq.df.roc, id.vars = c('D', 'D.str'), variable.name = 'Model', value.name = 'M')
+library(caTools)
+wq.auc <- colAUC(wq.df.roc[,3:5], wq.df.roc$D.str)
 
-print(str_c('Accuracy = ', round(sum(diag(wineConfMat)) / sum(wineConfMat), 3)))
-print(str_c('Red Sensitivity = ', round(sum(wineConfMat[1, 1]) / sum(wineConfMat[, 1]), 3)))
-print(str_c('White Sensitivity = ', round(sum(wineConfMat[2, 2]) / sum(wineConfMat[, 2]), 3)))
+ggplot(wq.df.roc.melt, aes(d = D, m = M, color = Model)) + 
+  geom_roc(linealpha = 0.8, labelround = 3) +
+  style_roc() +
+  labs(caption = str_c('AUC values are ', str_c(round(wq.auc, 4), collapse = ', '), ', respectively.')) +
+  ggsave('roc_for_wine.png', width = 8, height = 6)
+
+####
+## Confusion matrices for these three classifiers ##
+####
+library(caret)
+confusionMatrix(ifelse(wineLogRTest_full > 0.5, 'white', 'red'), wineTestScaled$wine)
+confusionMatrix(ifelse(wineLogRTest_bw > 0.5, 'white', 'red'), wineTestScaled$wine)
+confusionMatrix(ifelse(wineLogRTest_fw > 0.5, 'white', 'red'), wineTestScaled$wine)
 
 library(ggthemes)
 library(RColorBrewer)
 library(forcats)
-ggplot() +
-  geom_tile(data = wineGrid, aes(x = `total sulfur dioxide`, y = chlorides, fill = z), alpha = 0.5) +
-  scale_fill_gradientn(colors = brewer.pal(6, 'RdYlBu'), breaks = seq(0, 1, by = 0.2), limits = c(0, 1)) +
-  geom_point(data = wqSbsScaled, aes(x = `total sulfur dioxide`, y = chlorides, color = fct_rev(wine)), alpha = 0.3, size = 2.5) +
-  theme_solarized() +
-  scale_color_solarized() +
+ggplot() + 
+  geom_tile(data = wineGrid, aes(x = `total sulfur dioxide`, y = chlorides, fill = z), alpha = 0.5) + 
+  scale_fill_gradientn(colors = brewer.pal(6, 'RdYlBu'), breaks = seq(0, 1, by = 0.2), limits = c(0, 1)) + 
+  geom_point(data = wqSbsScaled, aes(x = `total sulfur dioxide`, y = chlorides, color = fct_rev(wine)), alpha = 0.3, size = 2.5) + 
+  theme_solarized() + 
+  scale_color_solarized() + 
   guides(color = guide_legend(title = 'Wine type', override.aes = list(size = 4, alpha = 1), order = 1),
-         fill = guide_colorbar(title = 'Logit score\nP{wine is white}\n', barwidth = 2.4, order = 2)) +
+         fill = guide_colorbar(title = 'Logit score\nP{wine is white}\n', barwidth = 2.4, order = 2)) + 
   ggsave('wineLogRegR2d.png')
-
-
-
-
-
-
-
-

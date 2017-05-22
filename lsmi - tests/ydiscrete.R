@@ -26,13 +26,17 @@ df.disy.lsmi_comparison %<>%
   melt %>%
   rename(case = variable)
 
+labels.ndists <- c('Labels discriminating\nthe distributions', 'Shuffled labels')
 library(ggplot2)
-ggplot(df.disy.lsmi_comparison, aes(case, value)) +
-  geom_boxplot(aes(color = case)) +
-  labs(y = 'lsmi estimate') + 
-  ggtitle('Boxplot of discrete-case LSMI values for normal distributions N(-2, 2) / N(2, 2)
-        right boxplot shows the result of calculating LSMI using permuted labels') +
-  ggsave('discrete_lsmi_normal_distrs.png')
+ggplot(df.disy.lsmi_comparison, aes(x = case, y = value, color = case, fill = case)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_brewer(palette = 'Set2', guide = FALSE) +
+  scale_color_brewer(palette = 'Set2', guide = FALSE) +
+  scale_x_discrete(labels = labels.ndists) +
+  labs(y = 'LSMI estimate, bits', x = 'case') + 
+  theme(legend.key.height = unit(2, 'lines')) +
+  ggtitle('Boxplot of discrete-case LSMI values for normal distributions N(-2, 2) / N(2, 2), n = 50') +
+  ggsave('lsmi_normal_distrs.png', width = 8, height = 6)
 
 ## testing discrete lsmi on iris dataset to validate clustering results
 ## core idea is to check if we'll be able to get noticeably higher lsmi values when
@@ -48,19 +52,23 @@ iris.cols <- as.factor(iris$Species)
 levels(iris.cols) <- 1:length(levels(iris.cols))
 iris.cols %<>% as.numeric
 
-png('hclust_iris.png', width = 1920, height = 1080)
+library(RColorBrewer)
+png('hclust_iris.png', width = 1920, height = 1080, pointsize = 20)
 hc.iris %>% 
   as.dendrogram %>%
-  set('branches_k_color', k = 3, c('black', 'forestgreen', 'firebrick2')) %>%
+  set('branches_lwd', 3.2) %>%
+  set('branches_col', 'darkgrey') %>%
+  #set('branches_k_color', k = 3, brewer.pal(3, 'Set1')[c(1,3,2)]) %>%
   set('leaves_pch', 19) %>%
-  set('leaves_col', iris.cols[hc.iris$order]) %>%
-  set('leaves_cex', 1) %>%
-  plot 
+  set('leaves_col', brewer.pal(3, 'Set1')[iris.cols][hc.iris$order]) %>%
+  set('labels_cex', 0.5) %>%
+  #set('leaves_cex', 2) %>%
+  plot(main = 'Ward hierarchical clustering of Fisher Iris data')
 
 hc.iris %>% 
   as.dendrogram %>%
-  rect.dendrogram(k = 3, lty = 5, lwd = 1, xpd = T, lower_rect = -0.25, upper_rect = 1.6,
-                  border = c('black', 'forestgreen', 'firebrick2'))
+  rect.dendrogram(k = 3, lty = 5, lwd = 3, xpd = T, lower_rect = -0.25, upper_rect = 1.6,
+                  border = brewer.pal(3, 'Set1')[c(1,3,2)])
 dev.off()
 
 hc.iris.labels <- cutree(hc.iris, k = 3)
@@ -95,10 +103,18 @@ iris.lsmi.results <- data.frame(hclust_labels = iris.lsmi,
                                 merged_wrong_classes = iris.lsmi_twoclasses_wrong,
                                 permuted_labels = iris.lsmi_wrong) %>% melt %>% rename(case = variable)
 
-qplot(factor(case), value, data = iris.lsmi.results, 
-      geom = c('boxplot'), color = case, xlab = 'case', ylab = 'lsmi estimate',
-      main = 'Boxplot of 25 discrete-case LSMI values for iris data using labels obtained from 
-      a) hierarchical clustering b) original data and c) permuted clustering labels') +
+library(ggplot2)
+iris.lsmi.labs <- c('From hierarchical\nclustering with 3 clusters', 'From original data',
+                    'From original data, \nsimilar classes merged', 'From original data, \ndissimilar classes merged',
+                    'Randomly shuffled\noriginal labels')
+ggplot(iris.lsmi.results, aes(x = case, y = value, color = case, fill = case)) + 
+  geom_boxplot(alpha = 0.7) + 
+  labs(x = 'case', y = 'LSMI estimate, bits') +
+  scale_x_discrete(labels = c('Ward hclust with 3 clusters', 'Original', 'Merged similar', 'Merged dissimilar', 'Shuffled')) + 
+  scale_color_brewer('Class labels', palette = 'Set1', labels = iris.lsmi.labs) +
+  scale_fill_brewer('Class labels', palette = 'Set1', labels = iris.lsmi.labs) + 
+  theme(legend.background = element_rect(color = 'black', fill = 'bisque1'), legend.key.height = unit(1.8, 'lines')) + 
+  ggtitle('Boxplot of 25 discrete-case LSMI values for iris data using different class labels') +
   ggsave('iris_lsmi_hclust_validation.png')
 
 ###
@@ -119,11 +135,13 @@ rm(loc.clustLabs)
 
 lsmi.vs.clustnum %<>% mutate(lsmi_adj = lsmi / sqrt(k), k = as.factor(k))
 
-qplot(k, lsmi_adj, data = lsmi.vs.clustnum, geom = 'boxplot', color = k,
-      xlab = 'number of clusters used in validation', ylab = 'lsmi estimate / sqrt(n. of clusters)', 
-      main = 'Boxplot of discrete-case lsmi distributions vs. number of iris data clusters supplied 
-      clusters are obtained by cutting hierarchical clustering tree') + 
-  labs(color = 'n. of clusters') +
+
+ggplot(lsmi.vs.clustnum, aes(x = k, y = lsmi_adj, color = k, fill = k)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_color_brewer(palette = 'Set2', guide = FALSE) +
+  scale_fill_brewer(palette = 'Set2', guide = FALSE) +
+  labs(x = 'Number of clusters', y = 'LSMI / sqrt(n. of clusters)', caption = "Clusters are obtained using Ward's method") + 
+  ggtitle('Adjusted LSMI vs. number of clusters on Fisher Iris data')
   ggsave('iris_lsmi_vs_clustnum.png')
 
 ###
