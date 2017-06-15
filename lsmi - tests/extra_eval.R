@@ -8,6 +8,7 @@
 nbfun.lsmi.ydiscr <- 
   data.frame(base.funs = rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps))
 
+set.seed(451)
 iris.cropS <- 
   iris$Species %>%
   equals('setosa') %>%
@@ -24,6 +25,7 @@ iris4lsmi.cropS <-
 
 ###
 
+set.seed(451)
 iris.cropVi <- 
   iris$Species %>%
   equals('virginica') %>%
@@ -42,81 +44,119 @@ iris4lsmi.cropVi <-
 
 indices.vals <- 1:nbfun.prec.reps
 for(i in seq(15, 125, by = nbfun.prec.step)) {
-  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.S'] <-
+  ### cropped data ###
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.S.np'] <-
     replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi.cropS, irisSpecies.cropS, nbfuns = i, method.nbfuns = 'non-paired'))
-  
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.S.bl'] <-
+    replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi.cropS, irisSpecies.cropS, nbfuns = i, method.nbfuns = 'balanced'))
   nbfun.lsmi.ydiscr[indices.vals, 'lsmi.S.Orig'] <-
     replicate(nbfun.prec.reps, lsmi.vanilla(iris4lsmi.cropS, irisSpecies.cropS, nbfuns = i))
-  
-  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.Vi'] <-
+  ##
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.Vi.np'] <-
     replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi.cropVi, irisSpecies.cropVi, nbfuns = i, method.nbfuns = 'non-paired'))
-  
-  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.Vi.Orig'] <- 
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.Vi.bl'] <-
+    replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi.cropVi, irisSpecies.cropVi, nbfuns = i, method.nbfuns = 'balanced'))
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.Vi.Orig'] <-
     replicate(nbfun.prec.reps, lsmi.vanilla(iris4lsmi.cropVi, irisSpecies.cropVi, nbfuns = i))
+  ### original data ###
   
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.F.np'] <-
+    replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi, iris$Species, nbfuns = i, method.nbfuns = 'non-paired'))
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.F.bl'] <-
+    replicate(nbfun.prec.reps, lsmi.extra(iris4lsmi, iris$Species, nbfuns = i, method.nbfuns = 'balanced'))
+  nbfun.lsmi.ydiscr[indices.vals, 'lsmi.F.Orig'] <-
+    replicate(nbfun.prec.reps, lsmi.vanilla(iris4lsmi, iris$Species, nbfuns = i))
+
   indices.vals %<>% add(nbfun.prec.reps)
 }
 rm(indices.vals)
 
-nbfun.mse.ydiscr <- 
-  data_frame(base.funs = seq(15, 125, by = nbfun.prec.step))
-
 # mean squarred error compared to the median LSMI computed using all possible base functions
 ## splitting results to feed them as lists to mse
-nbfun.mse.ydiscr$mse.S <- 
-  sapply(
-    split(nbfun.lsmi.ydiscr$lsmi.S, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ydiscr$lsmi.S %>% tail(nbfun.prec.reps)))
-
-nbfun.mse.ydiscr$mse.S.Orig <- 
-  sapply(
-    split(nbfun.lsmi.ydiscr$lsmi.S.Orig, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ydiscr$lsmi.S.Orig %>% tail(nbfun.prec.reps)))
-
-nbfun.mse.ydiscr$mse.Vi <- 
-  sapply(
-    split(nbfun.lsmi.ydiscr$lsmi.Vi, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ydiscr$lsmi.Vi %>% tail(nbfun.prec.reps)))
-
-nbfun.mse.ydiscr$mse.Vi.Orig <- 
-  sapply(
-    split(nbfun.lsmi.ydiscr$lsmi.Vi.Orig, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ydiscr$lsmi.Vi.Orig %>% tail(nbfun.prec.reps)))
-
+nbfun.mse.ydiscr <- data_frame(base.funs = seq(15, 125, by = nbfun.prec.step))
+for(var in colnames(nbfun.lsmi.ydiscr)[-1]) {
+  nbfun.mse.ydiscr[, var] <- sapply(
+    split(nbfun.lsmi.ydiscr[, var], rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    rmse, eta = median(nbfun.lsmi.ydiscr[, var] %>% tail(nbfun.prec.reps)))
+}
 library(reshape2)
-nbfun.mse.ydiscr %<>% melt(id.vars = 'base.funs')
-# nbfun.mse.ydiscr$var <- 
-#   sapply(
-#     split(nbfun.lsmi.ydiscr$lsmi.S, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-#     sd)
+nbfun.mse.ydiscr %<>%
+  melt(id.vars = 'base.funs')
 
-## plotting mse
+nbfun.mse.ydiscr$variable %<>% as.character()
+###
+# plotting RMSE
+###
 library(ggplot2)
-ggplot(nbfun.mse.ydiscr, 
-       aes(base.funs, value, 
-           color = variable, 
-           shape = variable)) + 
-  stat_smooth(method = 'loess', se = FALSE) +
-  geom_point(size = 3, alpha = 0.8) + 
-  geom_segment(aes(x = 38, xend = 15, y = 1.35, yend = 1.35), size = 1.2, color = 'olivedrab4') +
-  annotate('text', x = 28, y = 1.4, label = '1.35 - optimal MI value', color = 'black') +
+
+### Full iris data ###
+ggplot(filter(nbfun.mse.ydiscr, str_detect(nbfun.mse.ydiscr$variable, 'F')), 
+       aes(x = base.funs, y = value, color = variable)) + 
+  stat_smooth(method = 'loess', se = FALSE, size = 0.75, alpha = 0.8) +
+  geom_point(size = 2.5, alpha = 0.8) + 
+  scale_x_continuous(breaks = seq(15, 125, by = 10)) + 
+  scale_y_continuous(breaks = seq(0, 1.5, by = 0.1), limits = c(0, 1.3)) +
   guides(color = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold')),
          shape = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold'))) +
+  theme(legend.background = element_rect(colour = 'darkgrey', fill = 'lightgrey'), legend.position = c(0.75, 0.8), legend.key.height = unit(1.5, 'lines'), 
+        title = element_text(size = 8, angle = 0)) +
+  scale_color_discrete(labels = c('Balanced', 'Non-paired', 'Uniform')) +
+  labs(x = 'Number of centroids considered',
+       y = 'Root of mean squared error',
+       color = 'Centroid selection method') +
+  ggtitle(
+'Comparison of non-paired and uniform centroid selection methods on Fisher iris data
+X is a set of 4-dimensional vectors and Y are labels denoting species'
+  ) +
+  ggsave('nbfuns_mse_full_ydiscr.png', width = 8, height = 4)
+
+### Virginica class sparsed ###
+ggplot(filter(nbfun.mse.ydiscr, str_detect(nbfun.mse.ydiscr$variable, 'Vi')), 
+       aes(x = base.funs, y = value, color = variable)) + 
+  stat_smooth(method = 'loess', se = FALSE, size = 0.75, alpha = 0.8) +
+  geom_point(size = 2.5, alpha = 0.8) + 
   scale_x_continuous(breaks = seq(15, 125, by = 10)) + 
-  scale_y_continuous(breaks = seq(0, 1.5, by = 0.25)) +
+  scale_y_continuous(breaks = seq(0, 1.5, by = 0.1), limits = c(0, 1.3)) +
+  guides(color = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold')),
+         shape = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold'))) +
+  theme(legend.background = element_rect(colour = 'darkgrey', fill = 'lightgrey'), legend.position = c(0.75, 0.8), legend.key.height = unit(1.5, 'lines'), 
+        title = element_text(size = 8, angle = 0)) +
+  scale_shape_discrete(labels = c('Balanced', 'Non-paired', 'Uniform')) +
+  scale_color_discrete(labels = c('Balanced', 'Non-paired', 'Uniform')) +
   labs(x = 'Number of centroids considered',
        y = 'Root of mean squared error',
        color = 'Centroid selection method',
        shape = 'Centroid selection method') +
-  theme(legend.background = element_rect(colour = 'darkgrey', fill = 'lightgrey'), legend.position = c(0.75, 0.8), legend.key.height = unit(1.5, 'lines'), 
-        title = element_text(size = 8, angle = 0)) +
-  scale_shape_manual(values = c(18, 18, 17, 17), labels = c('Setosa sparsed\nNon-paired', 'Virginica sparsed\nNon-paired', 'Setosa sparsed\nUniform', 'Virginica sparsed\nUniform')) +
-  scale_color_discrete(labels = c('Setosa sparsed\nNon-paired', 'Virginica sparsed\nNon-paired', 'Setosa sparsed\nUniform', 'Virginica sparsed\nUniform')) +
   ggtitle(
-    'Comparison of non-paired and uniform centroid selection methods on Fisher iris data
-    Setosa / Virginica classes are half-sparsed. X is a set of 4-dimensional vectors and Y are labels denoting species'
+'Comparison of non-paired and uniform centroid selection methods on Fisher iris data
+Virginica class is half-sparsed. X is a set of 4-dimensional vectors and Y are labels denoting species'
   ) +
-  ggsave('nbfuns_mse_nonpaired_ydiscr.png')
+  ggsave('nbfuns_mse_virginica_ydiscr.png', width = 8, height = 4)
+
+### Setosa class sparsed ###
+ggplot(filter(nbfun.mse.ydiscr, str_detect(nbfun.mse.ydiscr$variable, 'S')), 
+       aes(x = base.funs, y = value, color = variable)) + 
+  stat_smooth(method = 'loess', se = FALSE, size = 0.75, alpha = 0.8) +
+  geom_point(size = 2.5, alpha = 0.8) + 
+  scale_x_continuous(breaks = seq(15, 125, by = 10)) + 
+  scale_y_continuous(breaks = seq(0, 1.5, by = 0.1), limits = c(0, 1.3)) +
+  guides(color = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold')),
+         shape = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold'))) +
+  theme(legend.background = element_rect(colour = 'darkgrey', fill = 'lightgrey'), legend.position = c(0.75, 0.8), 
+        legend.key.height = unit(1.5, 'lines'), title = element_text(size = 8, angle = 0)) +
+  scale_shape_discrete(labels = c('Balanced', 'Non-paired', 'Uniform')) +
+  scale_color_discrete(labels = c('Balanced', 'Non-paired', 'Uniform')) +
+  labs(x = 'Number of centroids considered',
+       y = 'Root of mean squared error',
+       color = 'Centroid selection method',
+       shape = 'Centroid selection method') +
+  ggtitle(
+'Comparison of non-paired and uniform centroid selection methods on Fisher iris data
+Setosa class is half-sparsed. X is a set of 4-dimensional vectors and Y are labels denoting species'
+  ) +
+  ggsave('nbfuns_mse_setosa_ydiscr.png', width = 8, height = 4)
+
+
 
 ##
 # non-paired centroids vs. continuous Y
@@ -127,19 +167,16 @@ indices.vals <- 1:nbfun.prec.reps
 for(i in seq(15, 125, by = nbfun.prec.step)) {
   nbfun.lsmi.ycont[indices.vals, 'lsmi.Full'] <-
     replicate(nbfun.prec.reps, lsmi.extra(iris[, 1], iris[, 3], nbfuns = i, method.nbfuns = 'non-paired'))
-  
   nbfun.lsmi.ycont[indices.vals, 'lsmi.Full.Orig'] <-
     replicate(nbfun.prec.reps, lsmi.vanilla(iris[, 1], iris[, 3], nbfuns = i))
   
   nbfun.lsmi.ycont[indices.vals, 'lsmi.S'] <-
     replicate(nbfun.prec.reps, lsmi.extra(iris[-iris.cropS, 1], iris[-iris.cropS, 3], nbfuns = i, method.nbfuns = 'non-paired'))
-  
   nbfun.lsmi.ycont[indices.vals, 'lsmi.S.Orig'] <-
     replicate(nbfun.prec.reps, lsmi.vanilla(iris[-iris.cropS, 1], iris[-iris.cropS, 3], nbfuns = i))
-  
+
   nbfun.lsmi.ycont[indices.vals, 'lsmi.Vi'] <-
     replicate(nbfun.prec.reps, lsmi.extra(iris[-iris.cropVi, 1], iris[-iris.cropVi, 3], nbfuns = i, method.nbfuns = 'non-paired'))
-  
   nbfun.lsmi.ycont[indices.vals, 'lsmi.Vi.Orig'] <-
     replicate(nbfun.prec.reps, lsmi.vanilla(iris[-iris.cropVi, 1], iris[-iris.cropVi, 3], nbfuns = i))
   
@@ -147,60 +184,38 @@ for(i in seq(15, 125, by = nbfun.prec.step)) {
   indices.vals %<>% add(nbfun.prec.reps)
 }
 rm(indices.vals)
+nbfun.lsmi.ycont %<>% as.data.frame()
 
 nbfun.mse.ycont <- data_frame(base.funs = seq(15, 125, by = nbfun.prec.step))
-
-nbfun.mse.ycont$mse.F <- 
-  sapply(
-    split(nbfun.lsmi.ycont$lsmi.Full, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ycont$lsmi.Full %>% tail(nbfun.prec.reps)))
-
-
-nbfun.mse.ycont$mse.F.Orig <- 
-  sapply(
-    split(nbfun.lsmi.ycont$lsmi.Full.Orig, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ycont$lsmi.Full.Orig %>% tail(nbfun.prec.reps)))
-####
-nbfun.mse.ycont$mse.S <- 
-  sapply(
-    split(nbfun.lsmi.ycont$lsmi.S, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ycont$lsmi.S %>% tail(nbfun.prec.reps)))
-
-nbfun.mse.ycont$mse.S.Orig <- 
-  sapply(
-    split(nbfun.lsmi.ycont$lsmi.S.Orig, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ycont$lsmi.S.Orig %>% tail(nbfun.prec.reps)))
-
-nbfun.mse.ycont$mse.Vi <- 
-  sapply(
-    split(nbfun.lsmi.ycont$lsmi.Vi, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ycont$lsmi.Vi %>% tail(nbfun.prec.reps)))
-
-nbfun.mse.ycont$mse.Vi.Orig <- 
-  sapply(
-    split(nbfun.lsmi.ycont$lsmi.Vi.Orig, rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
-    rmse, eta = median(nbfun.lsmi.ycont$lsmi.Vi.Orig %>% tail(nbfun.prec.reps)))
-
+for(var in colnames(nbfun.lsmi.ycont)[-1]) {
+  nbfun.mse.ycont[, var] <- sapply(
+    split(nbfun.lsmi.ycont[, var], rep(seq(15, 125, by = nbfun.prec.step), each = nbfun.prec.reps)), 
+    rmse, eta = nbfun.lsmi.ycont[, var] %>% tail(nbfun.prec.reps) %>% median)
+}
 library(reshape2)
 nbfun.mse.ycont %<>% melt(id.vars = 'base.funs')
 
-ggplot(nbfun.mse.ycont %>% filter(variable != 'mse.S.Orig'), aes(x = base.funs, y = value, color = variable)) +
-  stat_smooth(method = 'loess', se = FALSE) +
-  geom_point(size = 3, alpha = 0.8) + 
+ggplot(nbfun.mse.ycont, aes(x = base.funs, y = value, color = variable, shape = variable)) +
+  stat_smooth(method = 'loess', se = FALSE, alpha = 0.8, size = 0.7) +
+  geom_point(size = 2.5, alpha = 0.8) + 
   guides(color = guide_legend(ncol = 2, title.theme = element_text(size = 12, angle = 0, face = 'bold'))) +
-  scale_x_continuous(breaks = seq(10, 125, by = 10)) + 
-  scale_y_continuous(breaks = seq(0, 1, by = 0.15)) +
-  labs(x = 'Number of centroids considered',
-       y = 'Root of mean squared error',
-       color = 'Centroid selection method') +
+  scale_x_continuous(breaks = seq(15, 125, by = 10)) + 
+  scale_y_continuous(breaks = seq(0, 9, by = 0.1), limits = c(0, 0.9)) +
+  scale_color_brewer(palette = 'Paired', 
+                     labels = str_c(c('Non-paired\n', 'Uniform\n'), rep(c('Full data', 'Setosa sparsed', 'Virginica sparsed'), each = 2))) + 
+  scale_shape_manual(values = rep(c(17, 16), 3), 
+                     labels = str_c(c('Non-paired\n', 'Uniform\n'), rep(c('Full data', 'Setosa sparsed', 'Virginica sparsed'), each = 2))) +
+  labs(x = 'Number of centroids considered', y = 'Root of mean squared error', color = 'Centroid selection method', shape = 'Centroid selection method') +
   theme(legend.background = element_rect(colour = 'darkgrey', fill = 'lightgrey'), 
         legend.position = c(0.75, 0.8), legend.key.height = unit(1.5, 'lines'), 
         title = element_text(size = 8, angle = 0)) +
+  guides(color = guide_legend(ncol = 3, title.theme = element_text(size = 12, angle = 0, face = 'bold')),
+         shape = guide_legend(ncol = 3), title.theme = element_text(size = 12, angle = 0, face = 'bold')) +
   ggtitle(
 'Comparison of non-paired and uniform centroid selection methods on Fisher iris data
 Mutual information between "Sepal Length" & "Petal Length"'
   ) +
-  ggsave('nbfuns_mse_nonpaired_ycont.png')
+  ggsave('nbfuns_mse_nonpaired_ycont.png', width = 8, height = 4)
 
 
 ##

@@ -3,6 +3,7 @@
 #####################################
 library(magrittr)
 library(ggplot2)
+library(ggthemes)
 #library(tictoc)
 
 #################################
@@ -16,11 +17,10 @@ ind.ex1.cor <- cor(ind.ex1.x, ind.ex1.y) %>% round(3)
 ind.ex1.lsmi <- lsmi.vanilla(as.list(ind.ex1.x), as.list(ind.ex1.y)) %>% round(3)
 
 ggplot(data.frame(x = ind.ex1.x, y = ind.ex1.y), aes(x, y)) + 
-  geom_point(color = 'orange', size = 2) + 
-  ggtitle(paste('Independent r.v.s example:\n x ~ N(0, 4), y ~ N(5, 1) \n', 
-                'Cor = ', ind.ex1.cor, '; ', 'LSMI = ', ind.ex1.lsmi, sep = '')) + 
-  theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
-  ggsave('indep_example_normal.png')
+  geom_point(color = 'brown4', size = 1.2, alpha = 0.8) + 
+  ggtitle(str_c('Independent case: x ~ N(0, 4), y ~ N(5, 1). ', 'Cor = ', ind.ex1.cor, '; ', 'MI = ', ind.ex1.lsmi)) + 
+  theme_solarized() + 
+  ggsave('indep_example_normal.png', width = 8, height = 4)
 
 replicate(50, lsmi.vanilla(as.list(ind.ex1.x), as.list(ind.ex1.y))) %>% table
 
@@ -105,31 +105,28 @@ lin.lsmi.values %<>% melt(., id = c('cor', 'corhat.cimin', 'corhat.cimax'))
 
 library(ggplot2)
 ggplot(data = lin.lsmi.values, aes(cor, value)) + 
-  geom_point(aes(color = factor(variable)), size = 3, alpha = 0.3) + 
+  geom_point(aes(color = factor(variable)), size = 2.4, alpha = 0.3) + 
   geom_errorbar(aes(ymin = corhat.cimin, ymax = corhat.cimax, colour = factor(variable)), width = 0.025) + 
-  scale_color_hue(labels = c("LSMI estimate", "Cor estimate")) +
-  
-  theme(plot.background = element_rect(fill = "aliceblue"), legend.title = element_blank()) + 
-  guides(colour = guide_legend(override.aes = list(linetype = c(0, 1), shape = c(16, 16), alpha = 1))) + 
-  ggtitle(paste('LSMI / Cor estimates (95% CI) vs. true Cor\n bivariate normal distribution, n = ', lin.dots, ';', sep = '')) + 
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  
-  ggsave('corhat_vs_lsmi.png')
+  scale_color_discrete(labels = c('MI estimate', 'Cor estimate')) +
+  scale_y_continuous(breaks = seq(0, 2.5, by = 0.5)) + 
+  scale_x_continuous(breaks = seq(0, 1, by = 0.1)) + 
+  xlab('True correlation coefficient') + 
+  geom_segment(x = 0, xend = 1, y = 0, yend = 1, color = 'darkseagreen3', size = 1.3, linetype = 2, alpha = 0.8) + 
+  guides(colour = guide_legend(override.aes = list(linetype = c(0, 1), shape = c(16, 16), alpha = 1), title = 'Variable')) + 
+  theme(legend.position = c(0.15, 0.8)) + 
+  ggtitle(paste('MI / Pearson correlation estimates (with 95% CI) vs. true Pearson correlation.\nBivariate normal distribution, n = ', lin.dots, '.', sep = '')) + 
+  ggsave('corhat_vs_lsmi.png', width = 7.74, height = 4.27)
 
 # zoomed version
-ggplot(data = lin.lsmi.values, aes(cor, value)) + 
-  coord_cartesian(ylim = c(0, 1)) +
-  geom_point(aes(color = factor(variable)), size = 3, alpha = 0.3) + 
-  geom_errorbar(aes(ymin = corhat.cimin, ymax = corhat.cimax, colour = factor(variable)), width = 0.025) + 
-  geom_abline(slope = 1, intercept = 0, color = 'blue', size = 1) + 
-  
-  theme(plot.background = element_rect(fill = "aliceblue"), legend.title = element_blank()) + 
-  scale_color_hue(labels = c("LSMI estimate", "Cor estimate")) +
-  guides(colour = guide_legend(override.aes = list(linetype = c(0, 1), shape = c(16, 16), alpha = 1))) + 
-  ggtitle(paste('LSMI / Cor estimates (95% CI) vs. true Cor\n bivariate normal distribution, n = ', lin.dots, ';', sep = '')) + 
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  
-  ggsave('corhat_vs_lsmi_zoom.png')
+# ggplot(data = lin.lsmi.values, aes(cor, value)) + 
+#   coord_cartesian(ylim = c(0, 1)) +
+#   geom_point(aes(color = factor(variable)), size = 3, alpha = 0.3) + 
+#   geom_errorbar(aes(ymin = corhat.cimin, ymax = corhat.cimax, colour = factor(variable)), width = 0.025) + 
+#   geom_abline(slope = 1, intercept = 0, color = 'blue', size = 1) + 
+#   scale_color_discrete(labels = c("LSMI estimate", "Cor estimate")) +
+#   guides(colour = guide_legend(override.aes = list(linetype = c(0, 1), shape = c(16, 16), alpha = 1))) + 
+#   ggtitle(paste('LSMI / Cor estimates (95% CI) vs. true Cor\n bivariate normal distribution, n = ', lin.dots, ';', sep = '')) + 
+#   ggsave('corhat_vs_lsmi_zoom.png')
 
 # Mean squared error vs. dependence strength  #
 
@@ -202,29 +199,19 @@ df.depStr <-
   filter(depstr != 0) %>%
   mutate(depstr = as.factor(depstr), logMse = log(mse, 10), rmse = sqrt(mse), logRMse = log(rmse, 10))
 
-ggplot(df.depStr, aes(nbfuns, logRMse)) +
-  geom_point(aes(color = depstr), size = 3) + 
-  labs(x = 'number of base functions considered',
-       y = 'log10(RMSE)') +
-  geom_smooth(method = 'loess', se = F, aes(color = depstr)) +
-  scale_x_continuous(breaks = seq(0, 150, by = 10)) +
-  scale_y_continuous(breaks = unique(c(seq(0, floor(min(df.depStr$logRMse)), by = -0.2), seq(0, ceiling(max(df.depStr$logRMse)), by = 0.2)))) + 
-  scale_colour_discrete(name = 'Pearson\ncorrelation') +
-  ggtitle('RMSE vs. number of base functions considered for RBF MI') +
-  ggsave('nbfuns_depstr_log.png')
-
 df.depStr %<>% filter(depstr != 1)
-
 ggplot(df.depStr, aes(nbfuns, rmse)) +
   geom_point(aes(color = depstr), size = 3) + 
   labs(x = 'number of base functions considered',
        y = 'RMSE') +
   geom_smooth(method = 'loess', se = F, aes(color = depstr)) +
   scale_x_continuous(breaks = seq(0, 150, by = 10)) +
-  scale_y_continuous(breaks = seq(0, ceiling(max(df.depStr$rmse)), by = 0.02)) + 
-  scale_colour_discrete(name = 'Pearson\ncorrelation') +
-  ggtitle('RMSE vs. number of base functions considered for RBF MI') +
-  ggsave('nbfuns_depstr.png')
+  scale_y_continuous(breaks = seq(0, ceiling(max(df.depStr$rmse)), by = 0.05)) + 
+  scale_color_discrete(name = 'Pearson\ncorrelation') +
+  ggtitle(
+'RMSE vs. number of base functions considered 
+Bivariate normal distribution with various correlations') +
+  ggsave('nbfuns_depstr.png', width = 7, height = 4)
 
 
 ## parametric graph (LSMI, corhat) as a function of true cor
@@ -275,12 +262,11 @@ slin.lsmi2plot <- lsmi.vanilla(as.list(slin.data2plot$x), as.list(slin.data2plot
 
 
 ggplot(slin.data2plot, aes(x, y)) + 
-  geom_point(color = 'orange', size = 2) + 
-  ggtitle(paste('Simplest linear case
-                x ~ U[-1; 1]; y = ', slin.slope, '*x + ', slin.intercept, ' + N(0, sigma = 2) ; n = ', slin.dots, ';\n',
-                'Cor = ', slin.cor2plot, '; LSMI = ', slin.lsmi2plot, sep = '')) + 
-  theme(plot.background = element_rect(fill = "darkseagreen"), plot.title = element_text(hjust = 0.5)) +
-  ggsave('linear_example.png')
+  geom_point(color = 'brown4', size = 1.2, alpha = 0.8) + 
+  ggtitle(str_c('Simplest linear case x ~ U[-1; 1]; y = ', slin.slope, '*x + ', slin.intercept, ' + N(0, sigma = 2) ; n = ', slin.dots, ';\n',
+                'Cor = ', slin.cor2plot, '; LSMI = ', slin.lsmi2plot)) + 
+  theme_solarized() + 
+  ggsave('linear_example.png', width = 8, height = 4)
 
 
 # generating r.v.s
@@ -337,19 +323,17 @@ slin.lsmi.values %<>% melt(., id = c('noise', 'corhat.cimin', 'corhat.cimax'))
 library(ggplot2)
 #library(ggforce)
 ggplot(data = slin.lsmi.values, aes(noise, value)) + 
-  geom_hline(yintercept = 1, color = 'darkgray', size = 1) +
+  geom_hline(yintercept = 1, color = 'darkgray', size = 1.5, linetype = 3) +
   geom_point(aes(color = factor(variable)), size = 3, alpha = 0.3) + 
-  coord_cartesian(xlim = c(0, 5), ylim = c(0, 3)) +
   geom_errorbar(aes(ymin = corhat.cimin, ymax = corhat.cimax, colour = factor(variable)), width = 0.042) + 
-
-  scale_color_hue(labels = c("LSMI estimate", "Cor estimate")) +
-  theme(plot.background = element_rect(fill = "aliceblue"), legend.title = element_blank()) + 
-  guides(colour = guide_legend(override.aes = list(linetype = c(0, 1), shape = c(16, 16), alpha = 1))) + 
-  ggtitle(paste('LSMI / Cor estimates (95% CI) vs. noise\n x ~ U[-1; 1]; y =', 
-                slin.slope, '*x + ', slin.intercept, ' + N(0, sigma = noise)', '; n = ', slin.dots, ';', sep = '')) + 
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  #facet_zoom(y = value < 1 & value > 0, x = noise > 0.5 & noise < 1.5, horizontal = FALSE) +
-  
-  ggsave('simplest_linear.png')
+  scale_color_discrete(labels = c('MI estimate', 'Cor estimate')) +
+  scale_x_continuous(breaks = seq(0, 5, by = 0.5)) + 
+  scale_y_continuous(breaks = seq(0, 3.5, by = 0.5)) +
+  guides(colour = guide_legend(override.aes = list(linetype = c(0, 1), shape = c(16, 16), alpha = 1), title = 'Variable')) + 
+  ggtitle(str_c('MI / Pearson correlation estimates (with 95% CI) vs. noise\n x ~ U[-1; 1]; y =', slin.slope, '*x + ', 
+                slin.intercept, ' + N(0, sigma = noise)', ', n = ', slin.dots, '.')) + 
+  theme(legend.position = c(0.8, 0.8))
+  #facet_zoom(y = value < 1 & value > 0, x = noise > 0.8 & noise < 2, horizontal = FALSE) +
+  ggsave('simplest_linear.png', width = 8, height = 4.5)
 
 

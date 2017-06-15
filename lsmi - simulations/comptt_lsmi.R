@@ -45,18 +45,19 @@ rm(subs.data)
 rm(indices.vals)
 
 library(ggplot2)
+library(ggthemes)
+library(stringr)
 ggplot(data = compt.lsmi.values, aes(sampl.size, cmpt.time)) + 
-  geom_point(color = 'red', size = 3, alpha = 0.3) +
-  geom_smooth(method = 'lm',formula = y ~ poly(x, 2), colour = 'darkorange') + 
+  stat_smooth(method = 'lm',formula = y ~ poly(x, 2), colour = 'darkorange', se = FALSE, size = 2.5, alpha = 0.8) + 
   geom_jitter(position = position_jitter(width = 1.5), colour = 'red', size = 3, alpha = 0.3) + 
-  
-  theme(plot.background = element_rect(fill = "lightgoldenrod1")) +
-  ggtitle(paste('Plot of computation time dependence on sample size
-                fitted quadratic model; repetitions = ', compt.rep.lsmi, ';', sep = '')) + 
-  labs(x = 'sample size', y = 'computation time, sec') +
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  
-  ggsave('time_vs_samplesize.png')
+  scale_x_continuous(breaks = seq(10, 100, by = 10)) + 
+  scale_y_continuous(breaks = seq(0, 0.8, by = 0.1)) +
+  ggtitle(
+str_c(
+'Plot of computation time dependence on sample size with fitted quadratic model, repetitions = ', compt.rep.lsmi, ';')) + 
+  labs(x = 'sample size n', y = 'Computation time, sec') +
+  theme_dark() +
+  ggsave('time_vs_samplesize.png', width = 10, height = 5)
 
 # how lsmi computational time depends on a number of basis functions #
 ## this can provide insight on what's the t(nbfuns) dependence type is and
