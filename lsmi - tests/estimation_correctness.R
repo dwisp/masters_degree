@@ -10,8 +10,29 @@ set.seed(451)
 
 # taken from Wikipedia
 mutual_info_2dN <- function(rho) -0.5 * log2(1 - rho^2)
+
+# custom example
+mutual_info_Nexp <- function(lambda, sigma) {
+    mi <- -0.5 - log(sqrt(2 * pi) * sigma)
+    f_y <- function(y, s = sigma) pnorm((1 - y) / s) -  pnorm((- y / s))
+    y_entr <- function(y) f_y(y) * log(f_y(y))
+    integral <- integrate(y_entr, -Inf, Inf)
+    return(mi - integral[["value"]])
+}
+
 # generates a n * 2 matrix of bivariate normal observations
-generate_2dN_sample <- function(rho, n) rmvnorm(n, sigma = matrix(c(1, rho, rho, 1), nrow=2))
+generate_2dN_sample <- function(rho, n, seed=NULL) {
+    if(!is.null(seed)) set.seed(seed)
+    return(rmvnorm(n, sigma = matrix(c(1, rho, rho, 1), nrow=2)))
+}
+
+# custom more complicated example
+generate_2dNexp_sample <- function(lambda, sigma, n) {
+    x_s <- rexp(n, lambda)
+    # p(y|x) is defined through exponentiated x
+    y_s <- rnorm(n, exp(-lambda * x_s), sigma)
+    return(cbind(x_s, y_s))
+}
 
 generate_sample_df <- function(rhos=seq(0, 0.9, 0.1), n=1000) {
     # list of correlation matrices
@@ -63,12 +84,36 @@ compare_sampling_methods <- function(rhos, n, cnt, lsmi_pars=list()) {
     return(bind_rows(df_uniform, df_nonpaired))
 }
 
-compare_sample_size <- function(rhos, ns, lsmi_pars) {
-    # in: correlation coefficients, vector of sample sizes, number of repeats, lsmi estimator parameters
+compare_sample_size <- function(rhos, ns, lsmi_pars=list("method.nbfuns" = "uniform")) {
+    # in: correlation coefficients, vector of sample sizes, lsmi estimator parameters
     # out: df with cols (mutual_info, lsmi_estimate, sample_x, sample_y, sample_size)
-    
+    dfs <- list()
+    for (n in ns) {
+        dfs[[as.character(n)]] <- generate_sample_df(rhos, n)
+    }
+    df_samples <- bind_rows(dfs)
+    # sapply?
+    df_samples %<>% mutate(sample_size = sapply(sample_x, length))
+    df_samples <- estimate_lsmi(df_samples, lsmi_pars)
+    return(df_samples)
 }
 
-compare_n_base_functions <- function(rhos, n, lsmi_pars) {
-
+compare_n_base_functions <- function(rhos, n, nbfuns, lsmi_pars=list("method.nbfuns" = "uniform")) {
+    # in: correlation coefficients, sample sizes, vector of number of base functions, lsmi estimator parameters
+    # out: df with cols (mutual_info, lsmi_estimate, sample_x, sample_y, sample_size)
+    # stopifnot(!"nbfuns" %in% names(lsmi_pars), "Number of base functions is provided via nbfuns argument")
+    # a single base data frame
+    df <- generate_sample_df(rhos, n)
+    results <- c()
+    for (nbf in nbfuns) {
+        tmp_df <- estimate_lsmi(df, c(lsmi_pars, "nbfuns" = nbf))
+        results <- c(results, tmp_df[["lsmi_estimate"]])
+    }
+    df <- df[rep(1:nrow(df), length(nbfuns)), ]
+    df %<>%
+        mutate(
+            lsmi_estimate = results,
+            num_base_funs = rep(nbfuns, each = length(rhos))
+        )
+    return(df)
 }
